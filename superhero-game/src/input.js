@@ -63,16 +63,26 @@ export class Input {
 
   bindMouse() {
     const c = this.canvas;
+    // Pointer lock is preferred. Where it is refused (some embeds), drag to look and click to punch.
+    const locked = () => document.pointerLockElement === c;
+    let drag = null;
     c.addEventListener('mousedown', (e) => {
       if (this.touch || !this.game.started) return;
-      if (document.pointerLockElement !== c) {
-        c.requestPointerLock?.();
+      if (locked()) {
+        if (e.button === 0) this.press('punch');
+        if (e.button === 2) this.press('fire');
         return;
       }
-      if (e.button === 0) this.press('punch');
-      if (e.button === 2) this.press('fire');
+      drag = { button: e.button, moved: 0 };
+      try { c.requestPointerLock?.()?.catch?.(() => {}); } catch { /* refused */ }
     });
     addEventListener('mouseup', (e) => {
+      if (drag && !locked() && drag.moved < 6) {
+        const a = drag.button === 2 ? 'fire' : 'punch';
+        this.press(a);
+        this.release(a);
+      }
+      drag = null;
       if (e.button === 0 && this.held.has('punch')) this.release('punch');
       if (e.button === 2 && this.held.has('fire')) this.release('fire');
     });
@@ -81,8 +91,12 @@ export class Input {
     let lockedAt = 0;
     document.addEventListener('pointerlockchange', () => { lockedAt = performance.now(); });
     addEventListener('mousemove', (e) => {
-      if (document.pointerLockElement !== c || performance.now() - lockedAt < 150) return;
       if (Math.abs(e.movementX) > 250 || Math.abs(e.movementY) > 250) return;
+      if (locked()) {
+        if (performance.now() - lockedAt < 150) return;
+      } else if (drag) {
+        drag.moved += Math.abs(e.movementX) + Math.abs(e.movementY);
+      } else return;
       this.look.dx += e.movementX * MOUSE_SENS;
       this.look.dy += e.movementY * MOUSE_SENS;
     });

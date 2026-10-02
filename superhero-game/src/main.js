@@ -291,6 +291,6 @@ document.getElementById('start').addEventListener('click', () => {
     const el = document.documentElement;
     el.requestFullscreen?.().then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
   } else {
-    game.canvas.requestPointerLock?.();
+    try { game.canvas.requestPointerLock?.()?.catch?.(() => {}); } catch { /* optional */ }
   }
 });
