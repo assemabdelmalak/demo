@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0b1220">
+  <title>Super City — POC</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div id="stats">
+      <div id="lvl">LV <span id="lvl-num">1</span></div>
+      <div class="bar hp"><div id="hp-fill"></div><span id="hp-text"></span></div>
+      <div class="bar xp"><div id="xp-fill"></div><span id="xp-text"></span></div>
+    </div>
+    <canvas id="minimap" width="300" height="300"></canvas>
+    <div id="objective"></div>
+    <div id="crosshair"></div>
+    <div id="powers"></div>
+    <div id="toast"><h1 id="toast-title"></h1><p id="toast-sub"></p></div>
+    <div id="notice"></div>
+    <div id="prompt"></div>
+    <div id="speech"></div>
+    <div id="floaters"></div>
+    <div id="damage-flash"></div>
+  </div>
+
+  <div id="touch">
+    <div id="stick-base"><div id="stick-knob"></div></div>
+    <div id="buttons">
+      <button class="btn" id="btn-punch" data-act="punch">👊</button>
+      <button class="btn" id="btn-jump" data-act="jump">JUMP</button>
+      <button class="btn power-btn" id="btn-fire" data-act="fire">🔥</button>
+      <button class="btn power-btn" id="btn-lightning" data-act="lightning">⚡</button>
+      <button class="btn power-btn" id="btn-fly" data-act="fly">🦸</button>
+      <button class="btn" id="btn-descend" data-act="descend">▼</button>
+      <button class="btn pill" id="btn-interact" data-act="interact">TALK</button>
+    </div>
+  </div>
+
+  <div id="menu">
+    <div class="panel">
+      <h1>SUPER<span>CITY</span></h1>
+      <p class="tag">Proof of concept · Start powerless. Become legendary.</p>
+      <div class="cols">
+        <div class="controls desktop-only">
+          <h3>Keyboard &amp; mouse</h3>
+          <table>
+            <tr><td>Move</td><td><kbd>WASD</kbd></td></tr>
+            <tr><td>Look</td><td>Mouse (click to capture)</td></tr>
+            <tr><td>Sprint</td><td><kbd>Shift</kbd></td></tr>
+            <tr><td>Jump / fly up</td><td><kbd>Space</kbd></td></tr>
+            <tr><td>Punch</td><td><kbd>LMB</kbd> / <kbd>J</kbd></td></tr>
+            <tr><td>Talk / Lift / Throw</td><td><kbd>E</kbd></td></tr>
+            <tr><td>Fireball</td><td><kbd>Q</kbd> / <kbd>RMB</kbd></td></tr>
+            <tr><td>Lightning</td><td><kbd>R</kbd></td></tr>
+            <tr><td>Fly</td><td><kbd>F</kbd> or double-jump</td></tr>
+            <tr><td>Descend</td><td><kbd>C</kbd></td></tr>
+          </table>
+          <p class="small">Gamepads work too.</p>
+        </div>
+        <div class="controls">
+          <h3>Touch</h3>
+          <p>Left thumb anywhere: <b>move</b> (push to the edge to sprint)</p>
+          <p>Right side drag: <b>look around</b></p>
+          <p>Buttons: punch, jump, powers. A context button appears to talk, lift and throw.</p>
+          <h3>Progression</h3>
+          <p><b>LV2</b> 💪 Super strength · <b>LV3</b> 🔥 Fire · <b>LV4</b> ⚡ Lightning · <b>LV5</b> 🦸 Flight</p>
+          <p>Run into any wall to <b>climb</b> it. Beat gangs at the <span class="red">red beacons</span> for XP.</p>
+        </div>
+      </div>
+      <button id="start">PLAY</button>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
