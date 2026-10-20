@@ -8,7 +8,7 @@ This file lists all of it, in the order you'll need it. Tick items as you go.
 
 ## 0. Hand-off to Claude Code (day 1)
 
-1. **Create a private GitHub repo** called `radd-menu`. Enable branch protection on `main`: PRs required, CI must pass.
+1. **Create a private GitHub repo** called `radd-menu`. Enable branch protection on the default branch (`master` in this repo, ADR-010): PRs required, CI must pass.
 2. **Upload this package to the repo root.** `CLAUDE.md`, `OWNER_CHECKLIST.md`, `.env.example` and `README.md` go at the root; the `docs/` folder goes alongside them. On your S24 you can do this from the GitHub web UI ("Add file → Upload files") or a git client.
 3. **Open Claude Code on the repo.** You can use the desktop app or CLI on a computer, or Claude Code on the web / mobile connected to your GitHub. Use your best available model for planning phases. Coding can use the default model.
 4. **Paste the kickoff prompt:**
@@ -32,7 +32,7 @@ This file lists all of it, in the order you'll need it. Tick items as you go.
   - Pick something short that's easy to read on a printed table tent.
   - Ideas to check for availability: `radd.menu`, `raddmenu.com`, `menu.radd.app`.
   - You'll use the subdomains `m.`, `app.`, `api.` and `cdn.`.
-- [ ] **Default languages.** Arabic default + English, with French content enabled for some restaurants? (The spec assumes Arabic default.)
+- [x] **Default languages.** Decided 2026-10-20: English is the default and shown first; Arabic is fully supported and one tap away (ADR-009). Still open: which pilots enable French content.
 - [ ] **Pricing to test with owners.** Free / Pro $15–20 / Bundle $35–49. Adjust `packages/shared/plans.ts` later.
 - [ ] **Default ordering mode for pilots.** Recommended: "diners order, staff approve".
 - [ ] **LBP display.** Rounding step (5,000 recommended) and mode ("nearest" or "up").
@@ -142,7 +142,7 @@ This file lists all of it, in the order you'll need it. Tick items as you go.
 
 ## 8. How to test each demo checkpoint (your script)
 
-Use your S24 plus 2–3 friends' phones (at least one iPhone, one older Android). Always test **in Arabic first, then English**.
+Use your S24 plus 2–3 friends' phones (at least one iPhone, one older Android). Test in English (the default) first, then switch to Arabic and repeat. Both are required.
 
 **P0** — Open the staging URLs (or ask the agent for a screen recording if staging isn't up yet). Check that CI is green on GitHub.
 

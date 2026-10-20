@@ -158,7 +158,7 @@ Each story ID is referenced by the implementation plan.
 | Security | OWASP ASVS L1 baseline (L2 for auth and payments). See SECURITY.md. |
 | Privacy | Diners are anonymous (device ID only). Raw chat text kept 180 days. Labels kept 13 months. Data export and deletion on request for restaurants. |
 | Accessibility | WCAG 2.2 AA. Text size control. Reduced motion respected. |
-| Localisation | `ar` (RTL), `en` at launch. `fr` content and AI replies supported, `fr` UI later. Western digits by default (configurable). |
+| Localisation | `en` (default) and `ar` (RTL, first-class) at launch (ADR-009). `fr` content and AI replies supported, `fr` UI later. Western digits by default (configurable). |
 | Browsers | Android Chrome and Samsung Internet (last 2 major versions), iOS Safari 16+, desktop evergreen browsers for the console |
 
 ## 8. Plans (initial, to be validated with owners)

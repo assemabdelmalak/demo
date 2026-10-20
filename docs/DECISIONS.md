@@ -50,3 +50,39 @@ Format: `ADR-NNN — Title · Date · Status`, then Context, Decision, Consequen
 - **Consequences.** None functionally. Redis 8 can be swapped in if needed.
 
 <!-- Claude Code: append new ADRs below -->
+
+## ADR-009 — English is the default locale, always shown first; Arabic stays first-class · 2026-10-20 · Accepted
+
+- **Context.** The owner decided on 2026-10-20 that the default language is English and that everyone sees English until they choose otherwise. The specs had assumed Arabic as the default (DATA_MODEL defaults, SEED, ARCH §10, P0-T06, the P3 demo, OWNER_CHECKLIST §1).
+- **Decision.**
+  1. `DEFAULT_LOCALE = 'en'` is a single constant in `packages/shared`. Both Next apps, Drizzle column defaults, zod defaults and the seed use it. There is no env variable for it.
+  2. UI locale resolution: the `NEXT_LOCALE` cookie (set by the language switch) → the restaurant's `default_locale` (diner, once a restaurant is known) → `en`. `Accept-Language` is deliberately **not** used: a phone set to Arabic still opens in English until the diner taps "ع". The console and pages with no restaurant use cookie → `en`.
+  3. Content fallback: requested → restaurant default → `en` → first available (en, ar, fr). Missing UI messages show the English string at runtime; CI still fails on missing `ar` or `en` keys.
+  4. DB defaults (built in P1): `restaurants.default_locale 'en'`, `enabled_locales '{en,ar}'`, `session_participants.locale 'en'`. Restaurants can change their own default.
+  5. Beit Tayta (the demo restaurant) defaults to `en`, with `ar` and `fr` enabled.
+  6. Unchanged: Arabic is first-class (RTL, typography, search normalisation, dialect-aware AI); every screen is verified in `ar` and `en`; ALLERGEN_SAFETY wording; the assistant replies in the diner's language and script.
+- **Consequences.**
+  - CLAUDE §2.3(a) would favour honouring an Arabic browser so safety text appears in the reader's language. The owner chose predictability instead; the language switch is always visible top-end, and allergen cards render in the chosen UI locale.
+  - Arabic becomes the less-exercised path. Mitigation: `ar` Playwright projects, `ar` visual snapshots and axe in both locales stay mandatory.
+  - Specs updated: CLAUDE §3.5, PRD §7, ARCH §10, DATA_MODEL §3/§7/§11, SEED, UX §6.1, IMPLEMENTATION_PLAN P0-T06 and the P3 demo, OWNER_CHECKLIST §1/§8.
+
+## ADR-010 — The default branch is `master` · 2026-10-20 · Accepted
+
+- **Context.** The specs say "PR to `main`" and "push images on `main`", but this repository's default branch is `master`. The owner chose to keep it.
+- **Decision.** Phase PRs target the default branch. Workflows never hard-code a branch name: image pushes and deploy steps run when `github.ref` equals `refs/heads/<default branch>`.
+- **Consequences.** Renaming `master` to `main` later needs no code change. Docs now say "default branch (`master`)".
+
+## ADR-011 — Toolchain pins and module format · 2026-10-20 · Accepted
+
+- **Context.** Several newer majors exist on 2026-10-20 that conflict with the spec or with each other: TypeScript 7 (native compiler, no compiler API), NestJS 12 (ESM-only; nestjs-zod and the throttler storages support Nest ≤ 11), ESLint 10 (eslint-config-next and eslint-plugin-react/import crash on it), Vitest 5 (`vitest.workspace` removed), pnpm 12 (Rust rewrite). Node 24 moved to Maintenance LTS on 2026-10-20; Node 26 becomes Active LTS on 2026-10-28.
+- **Decision.**
+  - Node 24.22.0 (`.nvmrc`, `engines >=24.11 <25`), pnpm 10.34.7 via Corepack, TypeScript 5.9.3 (pinned through a pnpm override), NestJS 11.2.x, ESLint 10 with typescript-eslint, eslint-plugin-import-x, react-hooks, jsx-a11y (peer range relaxed; it runs cleanly on ESLint 10) and `@next/eslint-plugin-next` used directly instead of eslint-config-next, Vitest 5 with root `test.projects`.
+  - Exact versions everywhere; Renovate holds majors of TypeScript, NestJS and Node for dashboard approval.
+  - Workspace packages are ESM and emit `dist/` with `tsc`. Their `exports` carry a `@radd/source` condition that points at `src/`; `tsc --noEmit`, Vitest and editors resolve sources through it (`customConditions`), while builds clear the condition and consume `dist/`. NestJS apps compile to CommonJS and load the ESM packages through Node 24's `require(esm)`.
+- **Consequences.** Typecheck and tests need no prior build; app builds depend on `^build` in Turborepo. Moving to Node 26 is an owner decision (listed under "Needs owner").
+
+## ADR-012 — Next.js apps read public config at runtime · 2026-10-20 · Accepted
+
+- **Context.** Next.js inlines `process.env.NEXT_PUBLIC_*` into bundles at build time. DEPLOYMENT promotes one image from staging to production by retagging, so build-time inlining would point production at staging URLs.
+- **Decision.** The Next servers parse the browser-safe schema (`@radd/config/env` `loadPublicEnv`) at request time and pass the object to client components through a provider. Client code never reads `process.env`. The `NEXT_PUBLIC_` prefix now only marks a variable as safe to expose. Server-only variables are validated at server start (`instrumentation.ts`), not during `next build`, so images build without secrets.
+- **Consequences.** One image per app serves every environment. Pages that render the provider are dynamic; P3 revisits caching for diner menu routes. CI greps the client bundles for sentinel secret values (P0-T08).

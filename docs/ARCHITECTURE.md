@@ -296,9 +296,10 @@ In short:
 
 ## 10. Internationalisation
 
-- **UI locales:** `ar` (RTL), `en`. `fr` messages are added in a later phase. Locale comes from the cookie, then `Accept-Language`, then the restaurant default.
+- **UI locales:** `en` (default, LTR), `ar` (RTL). `fr` messages are added in a later phase.
+- **Locale resolution (ADR-009, "always English first"):** the `NEXT_LOCALE` cookie (set when the diner taps the language switch) → the restaurant's `default_locale` → `en`. `Accept-Language` is not used. The console and pages with no restaurant (sign-in, `/offline`, errors) use cookie → `en`.
 - **Content:** `LocalizedText = { ar?: string; en?: string; fr?: string }` in JSONB, with a per-field `source` (`owner` | `machine`) map in `translation_meta`.
-- **Fallback order:** requested → restaurant default → any available.
+- **Fallback order:** requested → restaurant default → `en` → first available in the order en, ar, fr. Missing UI messages fall back to the English string at runtime; CI still fails on missing `ar` or `en` keys.
 - **Numbers:** Western digits by default. Currency formats live in `packages/shared/money`.
 - **Search normalisation** (`packages/shared/search`):
   - strip tashkeel and tatweel

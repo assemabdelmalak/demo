@@ -24,7 +24,7 @@ Fictional restaurant used for local development, E2E tests, AI evals and sales d
 | Slug | `beit-tayta` |
 | Name | ar: بيت تيتا · en: Beit Tayta |
 | City | Mar Mikhael, Beirut |
-| Locales | `ar` (default), `en`, `fr` |
+| Locales | `en` (default), `ar`, `fr` (ADR-009) |
 | Currency | USD base, show LBP, rate 89,500, rounding 5,000 nearest |
 | VAT | 11% inclusive, applies to service |
 | Service charge | 10% (label: ar «خدمة» / en "Service") |

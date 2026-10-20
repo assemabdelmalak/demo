@@ -93,7 +93,7 @@ Allergen states always pair colour with an icon and text.
 - **Header:** cover image (16:9, max 180 px tall, thumbhash placeholder) with the logo overlapping its bottom-start edge, then the restaurant name.
 - **Status line:** "Table 12 · Open until 23:30", or "Closed now — browsing only".
 - **Table pill:** if a session is open, show "3 people are at this table" with avatars and a "Join" button.
-- **Language switch** sits top-end: "ع" / "EN" / "FR" segmented control, only for enabled locales.
+- **Language switch** sits top-end: "EN" / "ع" / "FR" segmented control, only for enabled locales. English is shown first until the diner switches or the restaurant's default is another locale (ADR-009).
 - **The menu renders immediately below.** No joining is needed to browse.
 
 ### 6.2 Menu

@@ -44,7 +44,7 @@ When specs conflict, the earlier one in this list wins:
    Record the choice in `docs/DECISIONS.md` as an ADR, then continue.
 4. **For each task:** implement → write tests → run `pnpm lint && pnpm typecheck && pnpm test` → update `docs/PROGRESS.md` → commit using Conventional Commits, e.g. `feat(sessions): add participant join flow`.
 5. **For each phase:**
-   - Work on branch `phase/NN-short-name` and open one PR to `main`.
+   - Work on branch `phase/NN-short-name` and open one PR to the repository's default branch (`master`; see ADR-010).
    - The PR body is the task checklist plus the "How to demo" steps from the plan.
    - At every **Demo checkpoint**, stop and wait for the owner's review unless told to continue.
 6. **Keep docs truthful.** If the implementation has to deviate from a spec, update that spec in the same PR and explain why in `DECISIONS.md`.
@@ -78,6 +78,7 @@ When specs conflict, the earlier one in this list wins:
 5. **Arabic is first-class.**
    - RTL layout, Arabic typography, Arabic search normalisation.
    - Every screen is checked in `ar` and `en`.
+   - The default locale is `en` (ADR-009). Arabic is reached by the language switch or a restaurant's own default, and must be exactly as complete as English.
    - No hard-coded user-facing strings.
 6. **Postgres is the source of truth.**
    - Realtime events are notifications only.

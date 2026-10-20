@@ -123,17 +123,17 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
 
 **Do:**
 - `apps/diner` and `apps/console`: Next.js 16 App Router, React 19, Tailwind v4, `output: 'standalone'`.
-- next-intl with `ar` (RTL) and `en`. The `<html dir>` comes from the locale. Message catalogs in `messages/{ar,en}.json` (+ `fr.json` stub).
+- next-intl with `en` (default, LTR) and `ar` (RTL), resolved per ADR-009 (cookie → restaurant default → `en`; no `Accept-Language`). The `<html lang dir>` come from the locale. Message catalogs in `messages/{en,ar}.json` (+ `fr.json` stub).
 - Fonts via `next/font`: diner uses Readex Pro; console uses IBM Plex Sans Arabic + IBM Plex Sans.
 - `packages/ui`: shadcn/ui initialised in the package (Radix), design tokens as CSS variables (UX §3–4), a ThemeProvider that maps a restaurant theme to CSS variables, and primitives: Button, Sheet, Tabs, Chip, Price, Avatar, Skeleton, Toast.
 - `packages/api-client`: openapi-fetch client factory (base URL from env, `credentials: 'include'`), a TanStack Query provider, and a socket.io-client factory with typed events.
 
 **Accept:**
 - `pnpm dev` runs api :4000, worker, diner :3000 and console :3001.
-- The diner home renders "Radd Menu" in Arabic RTL and English LTR.
+- The diner home renders "Radd Menu" in English LTR by default (even when the browser prefers Arabic) and in Arabic RTL after switching language.
 - A dark-mode token switch works in the console.
 
-**Test:** Playwright smoke: both apps load in `ar` and `en`; `dir` is correct.
+**Test:** Playwright smoke: both apps load in `en` by default and in `ar` after switching; `dir` is correct.
 
 ### P0-T07 Testing harness
 
@@ -605,8 +605,8 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
 **Accept:** Lighthouse CI thresholds pass. axe reports zero serious or critical violations in `ar` and `en`.
 
 **Demo checkpoint P3:**
-- Scan a printed Beit Tayta QR with an S24: the menu appears fast in Arabic.
-- Switch to English, search "fatoush", open the dish, see allergens with the stamp.
+- Scan a printed Beit Tayta QR with an S24: the menu appears fast in English (the default).
+- Switch to Arabic and back, search "fatoush", open the dish, see allergens with the stamp.
 - Toggle airplane mode: the menu is still browsable.
 - 86 a dish in the console: it greys out on the phone within 2 s.
 

@@ -106,8 +106,8 @@ cover_asset_id             uuid null → assets.id
 theme                      jsonb not null default '{"preset":"zaatar"}'
                            -- { preset, primaryColor?, fontPair?, cornerStyle?: 'soft'|'sharp', dark?: boolean }
 timezone                   text not null default 'Asia/Beirut'
-default_locale             locale not null default 'ar'
-enabled_locales            locale[] not null default '{ar,en}'
+default_locale             locale not null default 'en'      -- ADR-009
+enabled_locales            locale[] not null default '{en,ar}'
 base_currency              currency not null default 'USD'
 show_secondary_currency    boolean not null default true    -- LBP when base is USD (and vice versa)
 lbp_rate                   integer not null default 89500    -- LBP per 1 USD
@@ -378,7 +378,7 @@ display_name text not null (1..24 chars), color text not null, emoji text null,
 role participant_role not null default 'guest',
 status participant_status not null default 'active',
 is_ready boolean not null default false,
-locale locale not null default 'ar',
+locale locale not null default 'en',      -- join always sends the diner's UI locale; staff-created guests get restaurants.default_locale
 created_by_staff_user_id uuid null,
 joined_at, last_seen_at, left_at null
 UNIQUE (session_id, device_id) WHERE device_id IS NOT NULL
@@ -657,7 +657,7 @@ key text pk, scope text, response jsonb, status_code int, created_at  -- TTL 24h
 {
   "schema": 1,
   "restaurant": { "id": "…", "slug": "beit-tayta", "name": {"ar":"…","en":"…"}, "logo": {…variants}, "theme": {…},
-                  "locales": ["ar","en"], "defaultLocale": "ar",
+                  "locales": ["en","ar"], "defaultLocale": "en",
                   "currency": { "base": "USD", "showSecondary": true, "lbpRate": 89500, "rounding": {"step":5000,"mode":"nearest"} },
                   "service": { "bps": 1000, "label": {…} }, "tax": { "bps": 1100, "inclusive": true },
                   "orderingMode": "diner_with_approval", "groupOrdering": true, "ai": { "enabled": true, "name": {…} } },

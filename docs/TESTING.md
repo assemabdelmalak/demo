@@ -103,5 +103,5 @@ See SECURITY.md §3.
 5. `e2e-smoke` — start the stack with docker compose, seed, run the tagged `@smoke` Playwright suite.
 6. `lighthouse` — if diner changed.
 7. `eval-ai` — if AI paths changed. Requires `ANTHROPIC_API_KEY` secret. Budget cap.
-8. `docker` — on `main`: build and push images to GHCR, tagged `sha` and `staging`.
+8. `docker` — on the default branch (`master`, ADR-010): build and push images to GHCR, tagged `sha-<7>` and `staging`. Pull requests build the images without pushing.
 9. Nightly: full E2E, full evals, `pnpm audit`, CodeQL.

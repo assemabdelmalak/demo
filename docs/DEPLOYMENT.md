@@ -66,7 +66,7 @@ See `.env.example`. Set them per environment in Coolify. Secrets are never store
 ## 5. CI/CD (GitHub Actions)
 
 - **PR:** lint, typecheck, unit, integration, build, e2e-smoke, lighthouse, eval-ai (conditional).
-- **Merge to `main`:**
+- **Merge to the default branch (`master`, ADR-010):**
   1. Build and push images tagged `sha-<short>` and `staging`.
   2. Run migrations against staging. Coolify's pre-deploy command runs `node dist/migrate.js` with `DATABASE_URL_MIGRATOR`.
   3. Trigger the Coolify staging deploy webhook.
