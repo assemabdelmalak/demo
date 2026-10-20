@@ -45,7 +45,7 @@ This file lists all of it, in the order you'll need it. Tick items as you go.
 | Needed by | Service | What to do | Give the agent |
 |---|---|---|---|
 | P0 | **GitHub** | Private repo; enable Actions and GHCR (packages) | Repo access (Claude Code connects) |
-| P0 | **Sentry** (free tier) | Create org + 4 projects (api, worker, diner, console) | DSNs → GitHub secrets / Coolify env |
+| P0 (optional until staging) | **Sentry** (free tier) | Create org + 4 projects (api, worker, diner, console). Create an org auth token for source-map upload. | DSNs → Coolify env when you deploy. For browser source maps: GitHub secret `SENTRY_AUTH_TOKEN` and GitHub variables `SENTRY_ORG`, `SENTRY_PROJECT_DINER`, `SENTRY_PROJECT_CONSOLE` |
 | P1 (local: Mailpit) / P9 (real) | **Resend** | Sign up; verify your domain (SPF, DKIM, DMARC records in Cloudflare) | `RESEND_API_KEY`, sender address |
 | P6 | **Anthropic Console** (platform.claude.com) | Create an org, add billing, create **two API keys** (staging, production), set a **monthly spend limit**. If you have a Max/Team Claude plan, check whether your plan's monthly API credits apply. | `ANTHROPIC_API_KEY` (staging) → GitHub secret for evals + Coolify staging |
 | P6 | **Langfuse Cloud** (free Hobby tier; EU region) | Create a project per environment | Public/secret keys + host |

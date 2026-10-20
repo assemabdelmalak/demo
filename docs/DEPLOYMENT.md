@@ -28,18 +28,21 @@
 
 ## 2. Dockerfiles (`infra/docker/*.Dockerfile`)
 
-- **Multi-stage build:**
-  1. `deps`: `pnpm fetch` against the lockfile.
-  2. `build`: `turbo prune --scope=<app> --docker`, then install and build.
-  3. `runtime`: `node:24-alpine` or distroless.
+- **Multi-stage build** (one Dockerfile per app, built from the repo root):
+  1. `prune`: `turbo prune @radd/<app> --docker` keeps only the app and the workspace packages it uses.
+  2. `build`: `pnpm install --frozen-lockfile --ignore-scripts` on the pruned manifests (cached pnpm store), then the pruned sources, then `turbo run build --filter=@radd/<app>`.
+     - Nest apps (api, worker): `pnpm deploy --prod --legacy --ignore-scripts` writes a self-contained folder: `dist` plus production dependencies, workspace packages included. Third-party source maps and type declarations are then deleted (unused at runtime, ~55 MB), and `@sentry/node`'s build-time bundler plugins are left out through a pnpm override.
+     - Next apps (diner, console): `output: 'standalone'`; the build script copies `.next/static` and `public` into the standalone folder.
+  3. `runtime`: `node:24-alpine`, pinned by digest. Only the deployed folder is copied in.
 - **Runtime hardening:**
-  - non-root user
+  - non-root user (`node`)
   - `NODE_ENV=production`
-  - `--enable-source-maps`
-  - `HEALTHCHECK`
-- **Next.js apps:** `output: 'standalone'`. Copy `.next/standalone`, `.next/static` and `public`.
+  - `--enable-source-maps` for the Nest apps
+  - `HEALTHCHECK` with a Node one-liner (no curl in the image)
+- **No app config at build time.** Every image reads its env at start-up and exits with a readable list if something is missing (P0-T02). The Next apps hand their public config to the browser at request time, so one image serves staging and production (ADR-012).
 - **Build args:** `GIT_SHA` and `APP_VERSION`, exposed to Sentry as the release.
-- **Images:** keep under 250 MB.
+- **Sentry source maps** (ADR-019): diner and console images built on the default branch upload browser source maps when the `SENTRY_AUTH_TOKEN` secret exists. The token reaches the build as a BuildKit secret, never a build arg, and the maps are deleted after upload. The Nest apps upload none: `--enable-source-maps` maps their stack traces before Sentry sees them.
+- **Images:** keep under 250 MB. CI fails above it and checks that each image runs as `node` and reports healthy (`docker.yml`).
 
 ## 3. Cloudflare
 
