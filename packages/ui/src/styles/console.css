@@ -1,0 +1,73 @@
+/*
+ * Console (owner, staff, kitchen, admin) tokens in shadcn/ui naming. Light derives from the Plain
+ * preset with Zaatar's primary; dark derives from the Rooftop preset (ADR-018).
+ * Import after tokens.css. Dark mode is `data-theme="dark"` on <html>.
+ */
+:root {
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --console-primary: #4e6b2f;
+  --console-primary-foreground: #ffffff;
+  --secondary: #f2f4ef;
+  --secondary-foreground: #1a1a1a;
+  --console-muted: #f2f4ef;
+  --muted-foreground: #616161;
+  --console-accent: #e3e8dd;
+  --accent-foreground: #1a1a1a;
+  --destructive: #b42318;
+  --border: #e6e6e6;
+  --input: #d4d4d4;
+  --ring: #4e6b2f;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --background: #1b1d24;
+  --foreground: #f3f1ec;
+  --card: #22252d;
+  --card-foreground: #f3f1ec;
+  --popover: #22252d;
+  --popover-foreground: #f3f1ec;
+  --console-primary: #e5484d;
+  --console-primary-foreground: #000000;
+  --secondary: #2c2f38;
+  --secondary-foreground: #f3f1ec;
+  --console-muted: #2c2f38;
+  --muted-foreground: #a9abb3;
+  --console-accent: #2c2f38;
+  --accent-foreground: #f3f1ec;
+  --destructive: #f97066;
+  --border: #2c2f38;
+  --input: #3a3e49;
+  --ring: #7dd3c0;
+  color-scheme: dark;
+
+  /* Shared primitives read the restaurant tokens; point them at the console palette. */
+  --surface: var(--background);
+  --ink: var(--foreground);
+  --muted: var(--muted-foreground);
+  --primary: var(--console-primary);
+  --on-primary: var(--console-primary-foreground);
+  --line: var(--border);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
