@@ -86,3 +86,18 @@ Format: `ADR-NNN — Title · Date · Status`, then Context, Decision, Consequen
 - **Context.** Next.js inlines `process.env.NEXT_PUBLIC_*` into bundles at build time. DEPLOYMENT promotes one image from staging to production by retagging, so build-time inlining would point production at staging URLs.
 - **Decision.** The Next servers parse the browser-safe schema (`@radd/config/env` `loadPublicEnv`) at request time and pass the object to client components through a provider. Client code never reads `process.env`. The `NEXT_PUBLIC_` prefix now only marks a variable as safe to expose. Server-only variables are validated at server start (`instrumentation.ts`), not during `next build`, so images build without secrets.
 - **Consequences.** One image per app serves every environment. Pages that render the provider are dynamic; P3 revisits caching for diner menu routes. CI greps the client bundles for sentinel secret values (P0-T08).
+
+## ADR-013 — SeaweedFS replaces MinIO for local S3 · 2026-10-20 · Accepted
+
+- **Context.** The spec uses MinIO as the local stand-in for Cloudflare R2. The `minio/minio` and `minio/mc` images were removed from Docker Hub in September 2026, and the quay.io mirror no longer allows anonymous pulls.
+- **Decision.** Local S3 runs `chrislusf/seaweedfs` (Apache-2.0) in `weed mini` mode: S3 API on `localhost:9000`, admin UI on `localhost:9001`, buckets `radd-assets` (anonymous read) and `radd-private` created at start, CORS limited to the diner and console origins, identities in `infra/seaweedfs/s3.json`. Production stays on R2.
+- **Consequences.**
+  - Verified locally against the 4.48 binary: signed and presigned PUT, anonymous GET on `radd-assets` only, anonymous writes and listing denied, CORS preflight allowed only for :3000/:3001.
+  - The AWS SDK v3 adds a CRC32 checksum of an empty body to presigned PUT URLs by default, which SeaweedFS (and R2) reject with `BadDigest`. P2-T02's S3 client must set `requestChecksumCalculation: 'WHEN_REQUIRED'`.
+  - The local access key changes from `minio` to `radd-local` in `.env.example`. ARCH §11 bucket names now match the code (`radd-assets`, `radd-private`).
+
+## ADR-014 — Local database roles come from compose init SQL · 2026-10-20 · Accepted
+
+- **Context.** `.env.example` connects as `app_runtime`, `app_migrator` and `app_admin`, but the real roles, grants and RLS policies are P1-T03 work. The API readiness check in P0 already needs to connect.
+- **Decision.** `infra/postgres/init/02-local-roles.sql` creates the three login roles for local development only (`app_admin` with BYPASSRLS, `app_runtime` without), makes `app_migrator` the database and schema owner, and grants `CONNECT`/`USAGE`. It is marked local-only.
+- **Consequences.** P1-T03's role migration must be idempotent (`IF NOT EXISTS`) so it applies cleanly on top of these roles, and is the only source of truth for staging and production.

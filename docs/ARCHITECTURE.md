@@ -53,7 +53,7 @@
 | Realtime | Socket.IO 4 + `@socket.io/redis-adapter` | Rooms, reconnection, connection-state recovery, horizontal scale via Redis | Raw WS (reinventing), Pusher/Ably (cost, lock-in), Centrifugo (extra Go service; good future option) |
 | Auth (staff/owners) | Better Auth (self-hosted, MIT) | Organizations, roles, invitations, email OTP, phone OTP plugin, Drizzle adapter; data stays in our DB | Clerk/Auth0 (cost, data abroad), Keycloak (heavy) |
 | Diner identity | Signed device cookie + participant JWT | Anonymous, no PII, no login friction | Accounts (friction kills adoption) |
-| Storage | S3 API → Cloudflare R2 (prod), MinIO (local) | Zero egress fees on R2, CDN-friendly, portable | AWS S3 (egress cost) |
+| Storage | S3 API → Cloudflare R2 (prod), SeaweedFS (local; ADR-013) | Zero egress fees on R2, CDN-friendly, portable | AWS S3 (egress cost) |
 | Images | sharp in worker → AVIF/WebP variants + thumbhash | Fast, cheap, no third-party dependency | Cloudflare Images (paid; possible later) |
 | AI | Anthropic Claude (Haiku 5.5 / Sonnet 5.5 / Opus 5.5) via `@anthropic-ai/sdk` behind `packages/ai` | Strong Arabic, tool use with strict schemas, structured outputs, prompt caching, vision + native PDF, batch discounts. See AI_ARCHITECTURE.md | Multi-vendor gateway (added complexity now; the interface allows it later) |
 | LLM observability | Langfuse (Cloud Hobby first, self-host later; MIT core) | Traces, cost, prompt versions, eval datasets | LangSmith (closed), Phoenix |
@@ -311,7 +311,7 @@ In short:
 
 ## 11. Files and images
 
-- **Upload:** presigned PUT, direct to R2/MinIO, with content-type and size enforced by the presign policy. After upload, `POST /assets/{id}/complete` → worker validates magic bytes and processes.
+- **Upload:** presigned PUT, direct to R2 (SeaweedFS locally), with content-type and size enforced by the presign policy. After upload, `POST /assets/{id}/complete` → worker validates magic bytes and processes.
 - **Variants:**
   - widths 320 / 640 / 1280
   - AVIF + WebP
@@ -319,8 +319,8 @@ In short:
   - thumbhash placeholder
   - EXIF stripped
 - **Buckets:**
-  - `assets-public` — served at `cdn.<domain>`, immutable keys `/{orgId}/{assetId}/{variant}.{ext}`
-  - `assets-private` — imports, exports, backups
+  - `radd-assets` (public) — served at `cdn.<domain>`, immutable keys `/{orgId}/{assetId}/{variant}.{ext}`
+  - `radd-private` — imports and exports (backups use their own `radd-backups` bucket, DEPLOYMENT §7)
 
 ## 12. Observability
 
@@ -334,7 +334,7 @@ In short:
 
 | Env | Where | Data |
 |---|---|---|
-| local | Docker Compose (Postgres, Valkey, MinIO, Mailpit) + `pnpm dev` | seed |
+| local | Docker Compose (Postgres, Valkey, SeaweedFS, Mailpit) + `pnpm dev` | seed |
 | staging | `*.staging.<domain>` on the same Coolify host (separate resources) | seed + test orgs |
 | production | `m.`, `app.`, `api.`, `cdn.` `<domain>` | real |
 

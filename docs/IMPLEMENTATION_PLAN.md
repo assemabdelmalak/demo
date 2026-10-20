@@ -72,12 +72,12 @@ Goal: a monorepo with all four apps running locally, quality gates in place, and
 **Do:** `infra/docker-compose.dev.yml` with:
 - `pgvector/pgvector:pg17` (extensions pg_trgm, unaccent, citext, vector created by the init SQL);
 - `valkey/valkey:8`;
-- `minio` with buckets `radd-assets`, `radd-private` created by an init container, plus CORS for presigned PUT;
+- S3-compatible storage with buckets `radd-assets` (anonymous read) and `radd-private`, plus CORS for presigned PUT. SeaweedFS replaces MinIO, whose images were withdrawn (ADR-013);
 - `mailpit`.
 
 Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
 
-**Accept:** `pnpm dev:infra` brings all services up healthy. The MinIO console and Mailpit UI are reachable.
+**Accept:** `pnpm dev:infra` brings all services up healthy. The S3 admin UI and Mailpit UI are reachable.
 
 ### P0-T04 API skeleton (NestJS + Fastify)
 
@@ -339,7 +339,7 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
 ### P2-T02 Assets pipeline
 
 **Do:**
-- `ObjectStorage` interface with an S3 implementation (`@aws-sdk/client-s3` + presigner) for MinIO and R2.
+- `ObjectStorage` interface with an S3 implementation (`@aws-sdk/client-s3` + presigner) for SeaweedFS (local) and R2. Configure the client with `requestChecksumCalculation: 'WHEN_REQUIRED'` so presigned PUTs work on both (ADR-013).
 - `POST /assets/presign`: enforce type and size limits (images ≤ 10 MB jpeg/png/webp/heic; pdf ≤ 20 MB; xlsx/csv ≤ 5 MB).
 - `complete` endpoint → `image.process` job:
   - sharp: auto-orient, strip metadata;

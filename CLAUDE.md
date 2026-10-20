@@ -108,7 +108,7 @@ When specs conflict, the earlier one in this list wins:
 | Database | PostgreSQL 17 with pg_trgm, unaccent, citext (pgvector reserved). Drizzle ORM + drizzle-kit. RLS. |
 | Cache / queues / pub-sub | Valkey 8 (Redis-compatible, BSD licence) |
 | Auth | Better Auth (email+password, email OTP, organization plugin with roles). Custom signed participant tokens for anonymous diners. |
-| Storage | S3-compatible: Cloudflare R2 in production, MinIO locally. Images processed with sharp. |
+| Storage | S3-compatible: Cloudflare R2 in production, SeaweedFS locally (ADR-013). Images processed with sharp. |
 | AI | Anthropic Claude via the official SDK `@anthropic-ai/sdk`, behind `packages/ai`. Haiku 5.5 for diner chat and classification; Sonnet 5.5 for import, translation and summaries; Opus 5.5 as import fallback. Model IDs come from env. Langfuse for tracing and evals. |
 | Messaging | Resend + React Email. Meta WhatsApp Cloud API (Phase 9). |
 | Observability | Sentry, pino JSON logs, health endpoints, Langfuse |
@@ -146,7 +146,7 @@ radd-menu/
 | Command | Purpose |
 |---|---|
 | `pnpm install` | install |
-| `pnpm dev:infra` | start Postgres, Valkey, MinIO and Mailpit (docker compose) |
+| `pnpm dev:infra` | start Postgres, Valkey, SeaweedFS (S3) and Mailpit (docker compose) |
 | `pnpm dev` | run all apps in watch mode |
 | `pnpm db:generate` | generate a migration from the schema |
 | `pnpm db:migrate` | apply migrations |
