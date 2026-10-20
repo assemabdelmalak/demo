@@ -13,6 +13,7 @@ import { REQUEST_ID_HEADER } from './common/request-id';
 import { type ApiEnv, EnvModule } from './config/env.module';
 import { HealthModule } from './health/health.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
+import { type IdempotencyOptions } from './idempotency/idempotency.store';
 import { ThrottlingModule } from './throttling/throttling.module';
 import { ValkeyModule } from './valkey/valkey.module';
 
@@ -28,6 +29,8 @@ const ZodPipe = createZodValidationPipe({
 export interface AppModuleOptions {
   /** Extra modules, e.g. test-only routes. Production passes none. */
   imports?: ModuleMetadata['imports'];
+  /** Overrides for tests; production uses the defaults. */
+  idempotency?: Partial<IdempotencyOptions>;
 }
 
 @Module({})
@@ -59,7 +62,7 @@ export class AppModule {
         }),
         ValkeyModule,
         ThrottlingModule,
-        IdempotencyModule,
+        IdempotencyModule.register(options.idempotency),
         HealthModule,
         ...(options.imports ?? []),
       ],

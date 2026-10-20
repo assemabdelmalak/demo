@@ -1,4 +1,5 @@
 import { type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { detectIntegrationRuntime, startValkey, type StartedService } from '@radd/config/testing';
@@ -7,6 +8,7 @@ import { isUuidV7, uuidv7 } from '@radd/shared';
 import { createApp } from '../src/app.factory';
 import { testEnv } from './support/env';
 import { calls, TestRoutesModule } from './support/test-routes.module';
+import { IdempotencyStore } from '../src/idempotency/idempotency.store';
 
 const runtime = await detectIntegrationRuntime(['valkey']);
 
@@ -187,6 +189,38 @@ describe.skipIf(!runtime.ready)('API skeleton', () => {
       expect(calls.flaky - before).toBe(2);
     });
 
+    it('replays the headers that belong to the outcome, such as Location', async () => {
+      const key = uuidv7();
+      const before = calls.created;
+      const first = await post('/v1/__test/created', ORDER, key);
+      const second = await post('/v1/__test/created', ORDER, key);
+      expect(first.headers.location).toMatch(/^\/v1\/orders\//);
+      expect(second.headers.location).toBe(first.headers.location);
+      expect(calls.created - before).toBe(1);
+    });
+
+    it('does not store a 5xx that a handler returns without throwing', async () => {
+      const key = uuidv7();
+      const before = calls.degraded;
+      expect((await post('/v1/__test/degraded', ORDER, key)).statusCode).toBe(503);
+      const retry = await post('/v1/__test/degraded', ORDER, key);
+      expect(retry.statusCode).toBe(503);
+      expect(retry.headers['idempotent-replayed']).toBeUndefined();
+      expect(calls.degraded - before).toBe(2);
+    });
+
+    it('rejects absurdly nested bodies with 400 instead of crashing', async () => {
+      const deep = `${'['.repeat(5_000)}1${']'.repeat(5_000)}`;
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/__test/orders',
+        headers: { 'content-type': 'application/json', 'idempotency-key': uuidv7() },
+        payload: `{"item":${deep},"qty":1}`,
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ code: 'BAD_REQUEST' });
+    });
+
     it('scopes keys per actor', async () => {
       const key = uuidv7();
       const mine = await post('/v1/__test/orders', ORDER, key, '10.0.0.7');
@@ -339,6 +373,81 @@ describe.skipIf(!runtime.ready)('API skeleton', () => {
         statuses.push(res.statusCode);
       }
       expect(statuses).toEqual([200, 200, 200, 429]);
+    });
+  });
+
+  describe('idempotency under a short in-flight TTL', () => {
+    let shortApp: NestFastifyApplication;
+
+    beforeAll(async () => {
+      shortApp = await createApp(testEnv({ REDIS_URL: valkey.url }), {
+        imports: [TestRoutesModule],
+        idempotency: { inFlightTtlMs: 300 },
+      });
+      await shortApp.init();
+      await shortApp.getHttpAdapter().getInstance().ready();
+    });
+
+    afterAll(async () => {
+      await shortApp.close();
+    });
+
+    it('keeps the key locked while a request outlives the marker TTL', async () => {
+      const key = uuidv7();
+      const before = calls.verySlow;
+      const send = () =>
+        shortApp.inject({
+          method: 'POST',
+          url: '/v1/__test/very-slow',
+          payload: ORDER,
+          headers: { 'idempotency-key': key },
+          remoteAddress: '10.9.0.1',
+        });
+      const [first, retry] = await Promise.all([
+        send(),
+        new Promise((resolve) => setTimeout(resolve, 700)).then(send),
+      ]);
+      expect(first.statusCode).toBe(201);
+      expect(retry.statusCode).toBe(409);
+      expect(retry.json()).toMatchObject({ code: 'IDEMPOTENCY_IN_PROGRESS' });
+      expect(calls.verySlow - before).toBe(1);
+
+      const replay = await send();
+      expect(replay.headers['idempotent-replayed']).toBe('true');
+      expect(replay.json()).toEqual(first.json());
+    });
+  });
+
+  describe('IdempotencyStore ownership', () => {
+    it('lets only the claiming request refresh, complete or release its key', async () => {
+      const redis = new Redis(valkey.url);
+      try {
+        const store = new IdempotencyStore(redis);
+        const key = `idem:test:${uuidv7()}`;
+        const claim = await store.claim(key, 'fp');
+        if (!claim.claimed) throw new Error('expected to claim a fresh key');
+
+        const record = {
+          state: 'completed',
+          fingerprint: 'fp',
+          status: 201,
+          body: { n: 1 },
+        } as const;
+        expect(await store.refresh(key, 'someone-else')).toBe(false);
+        expect(await store.complete(key, 'someone-else', record)).toBe(false);
+        expect(await store.release(key, 'someone-else')).toBe(false);
+
+        expect(await store.complete(key, claim.token, record)).toBe(true);
+        // Once completed, the old token can no longer touch the stored response.
+        expect(await store.release(key, claim.token)).toBe(false);
+        const again = await store.claim(key, 'fp');
+        expect(again).toMatchObject({
+          claimed: false,
+          existing: { state: 'completed', body: { n: 1 } },
+        });
+      } finally {
+        redis.disconnect();
+      }
     });
   });
 });
