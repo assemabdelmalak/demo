@@ -13,6 +13,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@fontsource-variable/ibm-plex-sans": "5.3.0",
+    "@fontsource/ibm-plex-sans-arabic": "5.3.0",
     "@radd/api-client": "workspace:*",
     "@radd/config": "workspace:*",
     "@radd/shared": "workspace:*",

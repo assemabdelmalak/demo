@@ -1,5 +1,5 @@
 import { type Metadata, type Viewport } from 'next';
-import { Readex_Pro } from 'next/font/google';
+import localFont from 'next/font/local';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { type ReactNode } from 'react';
@@ -12,11 +12,23 @@ import { PublicEnvScript } from '@/components/public-env-script';
 
 import './globals.css';
 
-// One variable family covering Arabic and Latin: at most two font files on first load (UX §10).
-const readex = Readex_Pro({
-  subsets: ['arabic', 'latin'],
-  variable: '--font-readex',
+// Readex Pro, self-hosted from Fontsource (OFL) so builds never depend on Google Fonts. One
+// variable typeface in two files, Latin and Arabic: at most two font files on first load (UX §10).
+// No metric-adjusted fallback: it would sit between the two faces in the stack, and the local
+// Arial it uses has Arabic glyphs on Windows and macOS, so Arabic would render in Arial.
+const readexLatin = localFont({
+  src: '../../node_modules/@fontsource-variable/readex-pro/files/readex-pro-latin-wght-normal.woff2',
+  weight: '160 700',
+  variable: '--font-readex-latin',
   display: 'swap',
+  adjustFontFallback: false,
+});
+const readexArabic = localFont({
+  src: '../../node_modules/@fontsource-variable/readex-pro/files/readex-pro-arabic-wght-normal.woff2',
+  weight: '160 700',
+  variable: '--font-readex-arabic',
+  display: 'swap',
+  adjustFontFallback: false,
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,7 +42,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const locale = (await getLocale()) as UiLocale;
   const env = loadPublicEnv('diner');
   return (
-    <html lang={locale} dir={dirFor(locale)} className={readex.variable}>
+    <html
+      lang={locale}
+      dir={dirFor(locale)}
+      className={`${readexLatin.variable} ${readexArabic.variable}`}
+    >
       <body className="min-h-dvh antialiased">
         <PublicEnvScript env={env} />
         <NextIntlClientProvider>

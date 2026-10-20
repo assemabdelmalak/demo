@@ -1,5 +1,5 @@
 import { type Metadata, type Viewport } from 'next';
-import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from 'next/font/google';
+import localFont from 'next/font/local';
 import { cookies } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -14,18 +14,41 @@ import { parseConsoleTheme, THEME_COOKIE } from '@/lib/theme';
 
 import './globals.css';
 
-// Console type: IBM Plex Sans for Latin, IBM Plex Sans Arabic for Arabic (UX §2).
-const plex = IBM_Plex_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+// Console type: IBM Plex Sans for Latin, IBM Plex Sans Arabic for Arabic (UX §2), self-hosted
+// from Fontsource (OFL) so builds never depend on Google Fonts. No metric-adjusted fallbacks: one
+// would sit between the two faces in the stack, and the local Arial it uses has Arabic glyphs on
+// Windows and macOS, so Arabic would render in Arial.
+const plex = localFont({
+  src: '../../node_modules/@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-latin-wght-normal.woff2',
+  weight: '100 700',
   variable: '--font-plex',
   display: 'swap',
+  adjustFontFallback: false,
 });
-const plexArabic = IBM_Plex_Sans_Arabic({
-  subsets: ['arabic'],
-  weight: ['400', '500', '600', '700'],
+// Four static weights; loaded when Arabic text needs them rather than preloaded on every page.
+const plexArabic = localFont({
+  src: [
+    {
+      path: '../../node_modules/@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-400-normal.woff2',
+      weight: '400',
+    },
+    {
+      path: '../../node_modules/@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-500-normal.woff2',
+      weight: '500',
+    },
+    {
+      path: '../../node_modules/@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-600-normal.woff2',
+      weight: '600',
+    },
+    {
+      path: '../../node_modules/@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2',
+      weight: '700',
+    },
+  ],
   variable: '--font-plex-arabic',
   display: 'swap',
+  preload: false,
+  adjustFontFallback: false,
 });
 
 export async function generateMetadata(): Promise<Metadata> {

@@ -5,7 +5,8 @@
 @source '../../../../packages/ui/src';
 
 @theme inline {
-  --font-sans: var(--font-readex), ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    var(--font-readex-latin), var(--font-readex-arabic), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
