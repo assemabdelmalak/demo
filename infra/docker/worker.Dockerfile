@@ -23,6 +23,10 @@ RUN pnpm turbo run build --filter=@radd/worker
 # Self-contained folder: dist + production dependencies, workspace packages included.
 # --ignore-scripts: the root prepare script installs git hooks and there is no git in the image.
 RUN pnpm --filter @radd/worker deploy --prod --legacy --ignore-scripts /out
+# Third-party source maps (~50 MB) and type declarations are never used at runtime; without a
+# dependency's map, --enable-source-maps shows its compiled frame. Our own packages keep theirs.
+RUN find /out/node_modules -type f \( -name '*.map' -o -name '*.d.ts' -o -name '*.d.mts' -o -name '*.d.cts' \) \
+      -not -path '*/.pnpm/@radd+*' -delete
 
 FROM ${NODE_IMAGE} AS runtime
 ARG GIT_SHA=dev

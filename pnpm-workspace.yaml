@@ -26,6 +26,11 @@ overrides:
   # (GHSA-667r-xxjv-c9mm, GHSA-p68q-wchp-6fh7, GHSA-hwr6-493r-vm6h, GHSA-9q9j-q6p8-xq58).
   # 5.12.7 is a compatible 5.x patch release; drop this once Nest ships it.
   fastify: 5.12.7
+  # @sentry/node 11 lists its bundler plugins (rollup, oxc-parser, the Sentry CLI, ~70 MB) as a
+  # dependency, but only its vite/rollup/webpack/esbuild subpaths load them; the API and worker
+  # never do. Dropping the edge keeps their images under 250 MB. @sentry/nextjs keeps its own
+  # dependency for source-map upload.
+  '@sentry/node>@sentry/bundler-plugins': '-'
 
 peerDependencyRules:
   allowedVersions:
