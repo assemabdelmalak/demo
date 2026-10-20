@@ -412,6 +412,15 @@ importers:
       '@next/eslint-plugin-next':
         specifier: 16.4.2
         version: 16.4.2(eslint@10.13.0(jiti@2.7.0))
+      '@sentry/browser':
+        specifier: 11.8.0
+        version: 11.8.0
+      '@sentry/core':
+        specifier: 11.8.0
+        version: 11.8.0
+      '@sentry/node':
+        specifier: 11.8.0
+        version: 11.8.0
       '@swc/core':
         specifier: 1.16.18
         version: 1.16.18(@swc/helpers@0.5.23)
