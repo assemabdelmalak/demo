@@ -30,7 +30,13 @@ export function raddProject({
   return defineProject({
     plugins: decorators ? [swc.vite({ module: { type: 'es6' } })] : [],
     resolve: { conditions: [SOURCE_CONDITION, ...defaultClientConditions] },
-    ssr: { resolve: { conditions: [SOURCE_CONDITION, ...defaultServerConditions] } },
+    // Vitest drops `module` for server code: it often selects bundler-only ESM (extensionless
+    // imports, e.g. @opentelemetry/api) that Node cannot load. Overriding conditions must keep that.
+    ssr: {
+      resolve: {
+        conditions: [SOURCE_CONDITION, ...defaultServerConditions.filter((c) => c !== 'module')],
+      },
+    },
     test: {
       name: `${name}:${kind}`,
       environment,
