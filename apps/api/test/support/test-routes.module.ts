@@ -1,6 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { Body, Controller, Get, Module, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, Module, Param, Post, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { type FastifyReply } from 'fastify';
 import { createZodDto } from 'nestjs-zod';
@@ -9,6 +9,8 @@ import { z } from 'zod';
 import { DomainError, uuidv7 } from '@radd/shared';
 
 import { Idempotent } from '../../src/idempotency/idempotent.decorator';
+
+class ItemParams extends createZodDto(z.object({ id: z.string().min(1).max(100) })) {}
 
 class OrderDto extends createZodDto(
   z.object({ item: z.string().min(1), qty: z.number().int().min(1).max(20) }),
@@ -31,6 +33,17 @@ class TestController {
   @Get('domain-error')
   domainError(): never {
     throw new DomainError('ITEM_UNAVAILABLE', { detail: 'Fattoush is sold out today' });
+  }
+
+  @Get('items/:id')
+  item(@Param() params: ItemParams) {
+    return { id: params.id };
+  }
+
+  /** Extensions named like reserved problem members must not change the response. */
+  @Get('session-closed')
+  sessionClosed(): never {
+    throw new DomainError('SESSION_CLOSED', { extensions: { status: 'closed', sessionId: 's1' } });
   }
 
   @Get('boom')

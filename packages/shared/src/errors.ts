@@ -13,6 +13,7 @@ export const ERROR_CATALOGUE = {
   CONFLICT: { status: 409, title: 'Conflict' },
   GONE: { status: 410, title: 'Gone' },
   PAYLOAD_TOO_LARGE: { status: 413, title: 'Payload too large' },
+  URI_TOO_LONG: { status: 414, title: 'URI too long' },
   UNSUPPORTED_MEDIA_TYPE: { status: 415, title: 'Unsupported media type' },
   RATE_LIMITED: { status: 429, title: 'Too many requests' },
   INTERNAL: { status: 500, title: 'Internal error' },
@@ -65,6 +66,18 @@ export interface DomainErrorOptions {
   extensions?: Record<string, unknown>;
 }
 
+/** Members every problem body owns; extensions may not shadow them. */
+export const RESERVED_PROBLEM_MEMBERS: ReadonlySet<string> = new Set([
+  'type',
+  'title',
+  'status',
+  'code',
+  'detail',
+  'errors',
+  'requestId',
+  'instance',
+]);
+
 /** Thrown by services; the API maps it to a problem response with the catalogue status. */
 export class DomainError extends Error {
   readonly code: ErrorCode;
@@ -80,7 +93,13 @@ export class DomainError extends Error {
     this.status = ERROR_CATALOGUE[code].status;
     this.detail = options.detail;
     this.errors = options.errors;
-    this.extensions = options.extensions;
+    // An extension named e.g. `status` (a session status) must never replace the HTTP status or
+    // the stable code clients branch on.
+    this.extensions = options.extensions
+      ? Object.fromEntries(
+          Object.entries(options.extensions).filter(([key]) => !RESERVED_PROBLEM_MEMBERS.has(key)),
+        )
+      : undefined;
   }
 }
 
@@ -103,6 +122,8 @@ export function codeForStatus(status: number): ErrorCode {
       return 'GONE';
     case 413:
       return 'PAYLOAD_TOO_LARGE';
+    case 414:
+      return 'URI_TOO_LONG';
     case 415:
       return 'UNSUPPORTED_MEDIA_TYPE';
     case 429:

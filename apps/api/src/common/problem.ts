@@ -32,18 +32,27 @@ export function zodFieldErrors(error: ZodError): ProblemFieldError[] {
   }));
 }
 
+interface ProblemParts {
+  detail?: string | undefined;
+  errors?: ProblemFieldError[] | undefined;
+  extensions?: Record<string, unknown> | undefined;
+}
+
 function build(
   code: ErrorCode,
   status: number,
   typeBase: string,
-  extra: Partial<ProblemDetails> = {},
+  { detail, errors, extensions }: ProblemParts = {},
 ): ProblemDetails {
+  // Extensions first, so they can never override the members clients rely on.
   return {
+    ...extensions,
     type: `${typeBase}/${code}`,
     title: ERROR_CATALOGUE[code].title,
     status,
     code,
-    ...extra,
+    ...(detail ? { detail } : {}),
+    ...(errors ? { errors } : {}),
   };
 }
 
@@ -64,9 +73,9 @@ export function toProblem(exception: unknown, typeBase: string): ProblemDetails 
 
   if (exception instanceof DomainError) {
     return build(exception.code, exception.status, typeBase, {
-      ...exception.extensions,
-      ...(exception.detail ? { detail: exception.detail } : {}),
-      ...(exception.errors ? { errors: exception.errors } : {}),
+      detail: exception.detail,
+      errors: exception.errors,
+      extensions: exception.extensions,
     });
   }
 

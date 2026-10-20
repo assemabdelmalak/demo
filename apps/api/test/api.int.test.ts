@@ -92,6 +92,30 @@ describe.skipIf(!runtime.ready)('API skeleton', () => {
       });
     });
 
+    it('keeps the catalogue status and code when extensions reuse reserved names', async () => {
+      const res = await app.inject({ method: 'GET', url: '/v1/__test/session-closed' });
+      expect(res.statusCode).toBe(410);
+      expect(res.json()).toMatchObject({ status: 410, code: 'SESSION_CLOSED', sessionId: 's1' });
+    });
+
+    it('answers router errors (bad encoding, overlong params) as problem+json with a request ID', async () => {
+      const badUrl = await app.inject({ method: 'GET', url: '/v1/__test/items/%zz' });
+      expect(badUrl.statusCode).toBe(400);
+      expect(badUrl.headers['content-type']).toContain('application/problem+json');
+      expect(badUrl.json()).toMatchObject({
+        code: 'BAD_REQUEST',
+        requestId: badUrl.headers['x-request-id'],
+      });
+      expect(isUuidV7(badUrl.headers['x-request-id'])).toBe(true);
+
+      const longParam = await app.inject({
+        method: 'GET',
+        url: `/v1/__test/items/${'a'.repeat(150)}`,
+      });
+      expect(longParam.statusCode).toBe(414);
+      expect(longParam.json()).toMatchObject({ code: 'URI_TOO_LONG' });
+    });
+
     it('hides internal details of unexpected errors', async () => {
       const res = await app.inject({ method: 'GET', url: '/v1/__test/boom' });
       expect(res.statusCode).toBe(500);

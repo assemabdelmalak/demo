@@ -1,10 +1,13 @@
 import helmet from '@fastify/helmet';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { type FastifyError, type FastifyReply, type FastifyRequest } from 'fastify';
 import { Logger } from 'nestjs-pino';
 
 import { type AppModuleOptions, AppModule } from './app.module';
 import { resolveClientIp } from './common/actor';
+import { problemTypeBase, toProblem } from './common/problem';
+import { sendProblem } from './common/problem.filter';
 import { genRequestId, REQUEST_ID_HEADER } from './common/request-id';
 import { type ApiEnv } from './config/env.module';
 import { IDEMPOTENCY_HEADER, IDEMPOTENT_REPLAYED_HEADER } from './idempotency/idempotent.decorator';
@@ -19,8 +22,14 @@ export async function createApp(
   env: ApiEnv,
   options: AppModuleOptions = {},
 ): Promise<NestFastifyApplication> {
+  const typeBase = problemTypeBase(env.APP_DOMAIN);
   const adapter = new FastifyAdapter({
     genReqId: genRequestId,
+    // Router-level failures (bad percent-encoding, overlong params) happen before Nest sees the
+    // request; answer them in the same problem+json shape with the request ID.
+    frameworkErrors: (error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
+      sendProblem(reply, request, toProblem(error, typeBase), typeBase);
+    },
     requestIdHeader: false,
     // X-Forwarded-For is client-controlled; the client IP comes from CLIENT_IP_HEADER (ADR-016).
     trustProxy: false,

@@ -30,6 +30,14 @@ describe('DomainError', () => {
     expect(error.message).toBe('Fattoush is sold out');
   });
 
+  it('drops extensions that would shadow reserved problem members', () => {
+    const error = new DomainError('SESSION_CLOSED', {
+      extensions: { status: 'closed', code: 'X', type: 'y', sessionId: 's1' },
+    });
+    expect(error.extensions).toEqual({ sessionId: 's1' });
+    expect(error.status).toBe(410);
+  });
+
   it('falls back to the catalogue title as message', () => {
     expect(new DomainError('PRICE_CHANGED').message).toBe('Prices changed');
   });
@@ -51,6 +59,7 @@ describe('codeForStatus', () => {
     [404, 'NOT_FOUND'],
     [405, 'METHOD_NOT_ALLOWED'],
     [413, 'PAYLOAD_TOO_LARGE'],
+    [414, 'URI_TOO_LONG'],
     [429, 'RATE_LIMITED'],
     [418, 'BAD_REQUEST'],
     [502, 'INTERNAL'],
