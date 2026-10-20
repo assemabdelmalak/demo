@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "title": "Radd Menu",
+    "description": "امسح رمز الطاولة لتتصفّح القائمة وتطلبوا معاً."
+  },
+  "home": {
+    "eyebrow": "Radd",
+    "title": "Radd Menu",
+    "tagline": "امسح الرمز لتصفّح القائمة والطلب",
+    "sampleDish": "فتوش",
+    "sampleDescription": "خضار طازجة وسمّاق وخبز محمّص",
+    "sampleSecondary": "580,000 ل.ل.",
+    "cta": "تصفّح القائمة"
+  },
+  "language": {
+    "label": "اللغة",
+    "short": { "en": "EN", "ar": "ع" },
+    "name": { "en": "English", "ar": "العربية" }
+  }
+}

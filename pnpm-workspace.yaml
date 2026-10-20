@@ -12,8 +12,12 @@ ignoredBuiltDependencies:
   # Optional native speed-ups of the Docker client used by Testcontainers (SSH transport only).
   - cpu-features
   - ssh2
+  - '@parcel/watcher'
+  - msgpackr-extract
   # Postinstall only prints a version notice.
   - protobufjs
+  # Install-time analytics ping (pulled in by @nestjs/swagger); never run it.
+  - '@scarf/scarf'
 
 overrides:
   # TypeScript 7 (native) has no compiler API; typescript-eslint and openapi-typescript need 5.x. See ADR-011.

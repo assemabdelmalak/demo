@@ -30,6 +30,11 @@
       "@radd/source": "./src/logging/index.ts",
       "types": "./dist/logging/index.d.ts",
       "default": "./dist/logging/index.js"
+    },
+    "./public-env": {
+      "@radd/source": "./src/public-env/index.ts",
+      "types": "./dist/public-env/index.d.ts",
+      "default": "./dist/public-env/index.js"
     }
   },
   "scripts": {

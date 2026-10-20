@@ -1,0 +1,36 @@
+{
+  "name": "@radd/console",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build && cp -r .next/static .next/standalone/apps/console/.next/ && cp -r public .next/standalone/apps/console/",
+    "start": "PORT=3001 HOSTNAME=0.0.0.0 node --env-file-if-exists=../../.env .next/standalone/apps/console/server.js",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@radd/api-client": "workspace:*",
+    "@radd/config": "workspace:*",
+    "@radd/shared": "workspace:*",
+    "@radd/ui": "workspace:*",
+    "next": "16.4.2",
+    "next-intl": "4.14.9",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "10.13.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}

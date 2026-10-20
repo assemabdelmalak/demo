@@ -9,6 +9,16 @@
       "@radd/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./i18n": {
+      "@radd/source": "./src/i18n.ts",
+      "types": "./dist/i18n.d.ts",
+      "default": "./dist/i18n.js"
+    },
+    "./errors": {
+      "@radd/source": "./src/errors.ts",
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
     }
   },
   "files": [

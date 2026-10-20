@@ -1,0 +1,57 @@
+import { type Metadata, type Viewport } from 'next';
+import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from 'next/font/google';
+import { cookies } from 'next/headers';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { type ReactNode } from 'react';
+
+import { ApiProvider } from '@radd/api-client/react';
+import { loadPublicEnv } from '@radd/config/env';
+import { dirFor, type UiLocale } from '@radd/shared/i18n';
+
+import { PublicEnvScript } from '@/components/public-env-script';
+import { parseConsoleTheme, THEME_COOKIE } from '@/lib/theme';
+
+import './globals.css';
+
+// Console type: IBM Plex Sans for Latin, IBM Plex Sans Arabic for Arabic (UX §2).
+const plex = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-plex',
+  display: 'swap',
+});
+const plexArabic = IBM_Plex_Sans_Arabic({
+  subsets: ['arabic'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-plex-arabic',
+  display: 'swap',
+});
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('meta');
+  return { title: t('title'), description: t('description') };
+}
+
+export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
+
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = (await getLocale()) as UiLocale;
+  const theme = parseConsoleTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const env = loadPublicEnv('console');
+  return (
+    <html
+      lang={locale}
+      dir={dirFor(locale)}
+      data-theme={theme}
+      className={`${plex.variable} ${plexArabic.variable}`}
+    >
+      <body className="min-h-dvh bg-background text-foreground antialiased">
+        <PublicEnvScript env={env} />
+        <NextIntlClientProvider>
+          <ApiProvider baseUrl={env.NEXT_PUBLIC_API_URL}>{children}</ApiProvider>
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+}

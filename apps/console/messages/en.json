@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "title": "Radd Menu Console",
+    "description": "Run your menu, tables, orders and insights."
+  },
+  "home": {
+    "title": "Radd Menu",
+    "subtitle": "Console",
+    "sectionsLabel": "Sections",
+    "tabs": { "menu": "Menu", "live": "Live floor", "insights": "Insights" },
+    "placeholder": "Sign-in and the owner, staff and kitchen screens arrive in the next phases.",
+    "chips": { "vegan": "Vegan", "spicy": "Spicy" },
+    "cta": "Publish menu"
+  },
+  "theme": {
+    "useDark": "Dark mode",
+    "useLight": "Light mode"
+  },
+  "language": {
+    "label": "Language",
+    "short": { "en": "EN", "ar": "ع" },
+    "name": { "en": "English", "ar": "العربية" }
+  }
+}

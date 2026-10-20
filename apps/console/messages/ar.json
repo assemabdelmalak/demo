@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "title": "لوحة تحكم Radd Menu",
+    "description": "أدِر قائمتك وطاولاتك وطلباتك وإحصاءاتك."
+  },
+  "home": {
+    "title": "Radd Menu",
+    "subtitle": "لوحة التحكم",
+    "sectionsLabel": "الأقسام",
+    "tabs": { "menu": "القائمة", "live": "الصالة مباشرة", "insights": "الإحصاءات" },
+    "placeholder": "تسجيل الدخول وشاشات المالك والموظفين والمطبخ تأتي في المراحل التالية.",
+    "chips": { "vegan": "نباتي صرف", "spicy": "حار" },
+    "cta": "نشر القائمة"
+  },
+  "theme": {
+    "useDark": "الوضع الداكن",
+    "useLight": "الوضع الفاتح"
+  },
+  "language": {
+    "label": "اللغة",
+    "short": { "en": "EN", "ar": "ع" },
+    "name": { "en": "English", "ar": "العربية" }
+  }
+}
