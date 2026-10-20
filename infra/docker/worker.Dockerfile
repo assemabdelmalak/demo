@@ -21,7 +21,8 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lo
 COPY --from=prune /repo/out/full/ .
 RUN pnpm turbo run build --filter=@radd/worker
 # Self-contained folder: dist + production dependencies, workspace packages included.
-RUN pnpm --filter @radd/worker deploy --prod --legacy /out
+# --ignore-scripts: the root prepare script installs git hooks and there is no git in the image.
+RUN pnpm --filter @radd/worker deploy --prod --legacy --ignore-scripts /out
 
 FROM ${NODE_IMAGE} AS runtime
 ARG GIT_SHA=dev
