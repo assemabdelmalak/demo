@@ -1,3 +1,3 @@
-import { base } from '@radd/config/eslint/base';
+import { react } from '@radd/config/eslint/react';
 
-export default base({ tsconfigRootDir: import.meta.dirname });
+export default react({ tsconfigRootDir: import.meta.dirname });
