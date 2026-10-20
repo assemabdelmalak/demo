@@ -40,7 +40,6 @@ export function LanguageSwitch() {
           type="button"
           lang={locale}
           aria-pressed={current === locale}
-          aria-label={t(`name.${locale}`)}
           disabled={pending}
           onClick={() => {
             choose(locale);
@@ -50,7 +49,9 @@ export function LanguageSwitch() {
             current === locale ? 'bg-primary text-on-primary' : 'text-ink',
           )}
         >
-          {t(`short.${locale}`)}
+          {/* Short visible label, full name for screen readers (WCAG 2.5.3 label in name). */}
+          <span aria-hidden="true">{t(`short.${locale}`)}</span>
+          <span className="sr-only">{t(`name.${locale}`)}</span>
         </button>
       ))}
     </div>
