@@ -30,6 +30,16 @@ export async function expectRequestIds(request: APIRequestContext): Promise<void
 }
 
 export const test = base.extend<{ expectAccessible: () => Promise<void> }>({
+  // Definition of Done: no console errors. Every page a test opens is watched.
+  page: async ({ page }, use) => {
+    const errors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(`${message.text()} (${message.location().url})`);
+    });
+    page.on('pageerror', (error) => errors.push(error.message));
+    await use(page);
+    expect(errors, errors.join('\n')).toEqual([]);
+  },
   expectAccessible: async ({ page }, use) => {
     await use(() => expectNoSeriousA11yViolations(page));
   },
