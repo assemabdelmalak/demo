@@ -25,6 +25,11 @@
       "@radd/source": "./src/vitest/index.ts",
       "types": "./dist/vitest/index.d.ts",
       "default": "./dist/vitest/index.js"
+    },
+    "./logging": {
+      "@radd/source": "./src/logging/index.ts",
+      "types": "./dist/logging/index.d.ts",
+      "default": "./dist/logging/index.js"
     }
   },
   "scripts": {
@@ -54,6 +59,7 @@
     "eslint": "10.13.0",
     "ioredis": "5.11.1",
     "pg": "8.23.1",
+    "pino": "10.4.0",
     "prettier": "3.9.10",
     "testcontainers": "12.2.1",
     "typescript": "5.9.3",

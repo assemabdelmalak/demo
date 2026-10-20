@@ -5,10 +5,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     projects: [
-      'packages/*/vitest.config.ts',
-      'packages/*/vitest.int.config.ts',
-      'apps/*/vitest.config.ts',
-      'apps/*/vitest.int.config.ts',
+      'packages/*/vitest.config.{ts,mts}',
+      'packages/*/vitest.int.config.{ts,mts}',
+      'apps/*/vitest.config.{ts,mts}',
+      'apps/*/vitest.int.config.{ts,mts}',
     ],
   },
 });
