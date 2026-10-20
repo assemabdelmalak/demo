@@ -52,6 +52,7 @@ function isReplayable(status: number): boolean {
 export class IdempotencyInterceptor implements NestInterceptor {
   private readonly logger = new Logger(IdempotencyInterceptor.name);
   private readonly typeBase: string;
+  private readonly actorSecret: string;
 
   constructor(
     private readonly reflector: Reflector,
@@ -59,6 +60,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
     @Inject(API_ENV) env: ApiEnv,
   ) {
     this.typeBase = problemTypeBase(env.APP_DOMAIN);
+    this.actorSecret = env.ACTOR_HASH_SECRET;
   }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
@@ -81,7 +83,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
 
     const route = request.routeOptions.url ?? request.url;
-    const storeKey = `idem:${actorKey(resolveActor(request))}:${request.method}:${route}:${key}`;
+    const storeKey = `idem:${actorKey(resolveActor(request), this.actorSecret)}:${request.method}:${route}:${key}`;
     const fingerprint = createHash('sha256')
       .update(`${request.method} ${request.url}\n${canonicalJson(request.body ?? null)}`)
       .digest('base64url');

@@ -8,10 +8,16 @@ import { SlidingWindowThrottlerStorage } from './sliding-window.storage';
 import { VALKEY } from '../valkey/valkey.module';
 
 /**
- * Default policy for every route: 300 requests per actor per minute (API §8 "console writes").
- * Endpoints with tighter limits (join, rounds, chat, …) override it with @Throttle as they land.
+ * Default policy: 300 requests per actor per minute across all routes together (API §8 "console
+ * writes"), hence one bucket per actor rather than the library's per-handler key. Scoped limits
+ * (join, item mutations, rounds, chat, …) arrive as named throttlers with their own keys.
  */
-export const DEFAULT_THROTTLE = { name: 'default', ttl: 60_000, limit: 300 } as const;
+export const DEFAULT_THROTTLE = {
+  name: 'default',
+  ttl: 60_000,
+  limit: 300,
+  generateKey: (_context: unknown, tracker: string, name: string) => `${name}:${tracker}`,
+} as const;
 
 @Module({
   imports: [

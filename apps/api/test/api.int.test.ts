@@ -230,6 +230,44 @@ describe.skipIf(!runtime.ready)('API skeleton', () => {
       expect((await hit('10.3.0.1')).statusCode).toBe(429);
     });
 
+    it('ignores X-Forwarded-For, so rotating it does not reset the limit', async () => {
+      const spoofed = (i: number) =>
+        app.inject({
+          method: 'GET',
+          url: '/v1/__test/limited',
+          remoteAddress: '10.4.0.1',
+          headers: { 'x-forwarded-for': `198.51.100.${String(i)}, 203.0.113.77` },
+        });
+      const statuses = [];
+      for (let i = 0; i < 5; i += 1) statuses.push((await spoofed(i)).statusCode);
+      expect(statuses).toEqual([200, 200, 200, 429, 429]);
+    });
+
+    it('puts every address of one IPv6 /64 in the same bucket', async () => {
+      const statuses = [];
+      for (let i = 1; i <= 4; i += 1)
+        statuses.push((await hit(`2001:db8:1:2::${String(i)}`)).statusCode);
+      expect(statuses).toEqual([200, 200, 200, 429]);
+      expect((await hit('2001:db8:1:3::1')).statusCode).toBe(200);
+    });
+
+    it('shares the default bucket across routes (one per-actor cap, API §8)', async () => {
+      for (let i = 0; i < 3; i += 1) {
+        await app.inject({ method: 'GET', url: '/v1/__test/ping', remoteAddress: '10.5.0.1' });
+      }
+      expect((await hit('10.5.0.1')).statusCode).toBe(429);
+    });
+
+    it('blocks every request when a limit is 0', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/__test/off',
+        remoteAddress: '10.6.0.1',
+      });
+      expect(res.statusCode).toBe(429);
+      expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
+    });
+
     it('never throttles health checks', async () => {
       const results = await Promise.all(
         Array.from({ length: 320 }, () => app.inject({ method: 'GET', url: '/v1/health/live' })),
@@ -262,6 +300,45 @@ describe.skipIf(!runtime.ready)('API skeleton', () => {
 
       const untrusted = await preflight('https://evil.example');
       expect(untrusted.headers['access-control-allow-origin']).toBeUndefined();
+    });
+  });
+
+  describe('behind Cloudflare (CLIENT_IP_HEADER=cf-connecting-ip)', () => {
+    let edgeApp: NestFastifyApplication;
+    const EDGE = '172.18.0.5';
+
+    beforeAll(async () => {
+      edgeApp = await createApp(
+        testEnv({ REDIS_URL: valkey.url, CLIENT_IP_HEADER: 'cf-connecting-ip' }),
+        { imports: [TestRoutesModule] },
+      );
+      await edgeApp.init();
+      await edgeApp.getHttpAdapter().getInstance().ready();
+    });
+
+    afterAll(async () => {
+      await edgeApp.close();
+    });
+
+    const viaEdge = (headers: Record<string, string>) =>
+      edgeApp.inject({ method: 'GET', url: '/v1/__test/limited', remoteAddress: EDGE, headers });
+
+    it('keys diners by the Cloudflare client IP, not the shared edge address', async () => {
+      for (let i = 0; i < 3; i += 1) await viaEdge({ 'cf-connecting-ip': '198.51.100.50' });
+      expect((await viaEdge({ 'cf-connecting-ip': '198.51.100.50' })).statusCode).toBe(429);
+      expect((await viaEdge({ 'cf-connecting-ip': '198.51.100.51' })).statusCode).toBe(200);
+    });
+
+    it('cannot be steered by a spoofed X-Forwarded-For', async () => {
+      const statuses = [];
+      for (let i = 0; i < 4; i += 1) {
+        const res = await viaEdge({
+          'cf-connecting-ip': '198.51.100.60',
+          'x-forwarded-for': `6.6.6.${String(i)}, 198.51.100.60`,
+        });
+        statuses.push(res.statusCode);
+      }
+      expect(statuses).toEqual([200, 200, 200, 429]);
     });
   });
 });

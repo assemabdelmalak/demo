@@ -4,12 +4,12 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Logger } from 'nestjs-pino';
 
 import { type AppModuleOptions, AppModule } from './app.module';
+import { resolveClientIp } from './common/actor';
 import { genRequestId, REQUEST_ID_HEADER } from './common/request-id';
 import { type ApiEnv } from './config/env.module';
 import { IDEMPOTENCY_HEADER, IDEMPOTENT_REPLAYED_HEADER } from './idempotency/idempotent.decorator';
 
 export const API_PREFIX = 'v1';
-const DEPLOYED = new Set(['staging', 'production']);
 
 /**
  * Builds the configured Nest/Fastify app without listening. Used by `main.ts`, the integration
@@ -22,8 +22,8 @@ export async function createApp(
   const adapter = new FastifyAdapter({
     genReqId: genRequestId,
     requestIdHeader: false,
-    // Behind Cloudflare + Traefik in deployed environments; trusted only there (SEC §2).
-    trustProxy: DEPLOYED.has(env.APP_ENV),
+    // X-Forwarded-For is client-controlled; the client IP comes from CLIENT_IP_HEADER (ADR-016).
+    trustProxy: false,
     bodyLimit: 1024 * 1024,
   });
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -42,6 +42,7 @@ export async function createApp(
     .getInstance()
     .addHook('onRequest', (request, reply, done) => {
       void reply.header(REQUEST_ID_HEADER, request.id);
+      request.clientIp = resolveClientIp(request, env.CLIENT_IP_HEADER);
       done();
     });
 

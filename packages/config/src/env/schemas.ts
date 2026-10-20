@@ -92,6 +92,7 @@ const API_SECRET_KEYS = [
   'DEVICE_COOKIE_SECRET',
   'RECEIPT_TOKEN_SECRET',
   'DINER_REVALIDATE_SECRET',
+  'ACTOR_HASH_SECRET',
 ] as const;
 
 export const apiEnvSchema = z
@@ -106,6 +107,20 @@ export const apiEnvSchema = z
     ...mail,
     ...whatsapp,
     API_PORT: port.default(4000),
+    /**
+     * Header the edge proxy sets to the real client IP (`cf-connecting-ip` behind Cloudflare).
+     * Unset: use the socket address. Forwarding headers are never trusted otherwise (ADR-016).
+     */
+    CLIENT_IP_HEADER: z.preprocess(
+      (value) =>
+        value === '' ? undefined : typeof value === 'string' ? value.toLowerCase() : value,
+      z
+        .string()
+        .regex(/^[a-z0-9-]+$/, 'must be an HTTP header name')
+        .optional(),
+    ),
+    /** Keys the HMAC that turns IPs and IDs into Valkey key fragments. */
+    ACTOR_HASH_SECRET: requiredString,
     BETTER_AUTH_SECRET: requiredString,
     BETTER_AUTH_URL: url,
     AUTH_COOKIE_DOMAIN: requiredString,

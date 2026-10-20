@@ -25,8 +25,10 @@ local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
 redis.call('ZREMRANGEBYSCORE', key, '-inf', now - ttl)
 local count = redis.call('ZCARD', key)
 if count >= limit then
+  -- limit 0 (an endpoint switched off) leaves the set empty: wait a full window.
   local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
-  local wait = tonumber(oldest[2]) + ttl - now
+  local wait = ttl
+  if oldest[2] then wait = tonumber(oldest[2]) + ttl - now end
   return { count + 1, wait, 1, wait }
 end
 redis.call('ZADD', key, now, member)

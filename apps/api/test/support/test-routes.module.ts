@@ -63,6 +63,18 @@ class TestController {
   limited() {
     return { ok: true };
   }
+
+  @Get('ping')
+  ping() {
+    return { ok: true };
+  }
+
+  /** A limit of 0 switches an endpoint off; it must block, not fail open. */
+  @Get('off')
+  @Throttle({ default: { limit: 0, ttl: 1_000 } })
+  off() {
+    return { ok: true };
+  }
 }
 
 @Module({ controllers: [TestController] })

@@ -117,6 +117,7 @@ describe('secrets outside local development', () => {
     'DEVICE_COOKIE_SECRET',
     'RECEIPT_TOKEN_SECRET',
     'DINER_REVALIDATE_SECRET',
+    'ACTOR_HASH_SECRET',
   ];
 
   it.each(['staging', 'production'])('rejects the change-me placeholders in %s', (appEnv) => {
