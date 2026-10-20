@@ -15,10 +15,11 @@
     "dev:infra:down": "docker compose -f infra/docker-compose.dev.yml down",
     "build": "turbo run build",
     "lint": "turbo run lint && eslint --no-warn-ignored '*.{js,mjs,ts}'",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "turbo run typecheck && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "test:int": "turbo run test:int"
   },
   "prettier": "@radd/config/prettier",
   "devDependencies": {
@@ -31,6 +32,8 @@
     "lint-staged": "17.6.0",
     "prettier": "3.9.10",
     "turbo": "2.11.9",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
   }
 }

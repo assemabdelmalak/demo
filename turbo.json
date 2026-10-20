@@ -22,6 +22,11 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
+    },
+    "test:int": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "passThroughEnv": ["DOCKER_*", "TESTCONTAINERS_*", "TEST_DATABASE_URL", "TEST_VALKEY_URL"]
     }
   }
 }

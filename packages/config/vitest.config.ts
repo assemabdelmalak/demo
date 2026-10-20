@@ -1,9 +1,3 @@
-import { defineProject } from 'vitest/config';
+import { raddProject } from './src/vitest/index.js';
 
-export default defineProject({
-  test: {
-    name: 'config',
-    include: ['src/**/*.test.ts'],
-    exclude: ['src/**/*.int.test.ts'],
-  },
-});
+export default raddProject({ name: 'config' });

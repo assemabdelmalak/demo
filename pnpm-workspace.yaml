@@ -6,8 +6,14 @@ packages:
 onlyBuiltDependencies:
   - lefthook
 ignoredBuiltDependencies:
-  # Prebuilt binaries ship as optional dependencies; the postinstall is only a fallback.
+  # Prebuilt binaries ship as optional dependencies; their postinstall is only a fallback.
+  - '@swc/core'
   - unrs-resolver
+  # Optional native speed-ups of the Docker client used by Testcontainers (SSH transport only).
+  - cpu-features
+  - ssh2
+  # Postinstall only prints a version notice.
+  - protobufjs
 
 overrides:
   # TypeScript 7 (native) has no compiler API; typescript-eslint and openapi-typescript need 5.x. See ADR-011.
