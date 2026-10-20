@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { withSentryConfig } from '@sentry/nextjs/config';
 import { type NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
@@ -30,4 +31,23 @@ const config: NextConfig = {
   headers: () => Promise.resolve([{ source: '/:path*', headers: SECURITY_HEADERS }]),
 };
 
-export default createNextIntlPlugin('./src/i18n/request.ts')(config);
+const withIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+// Browser source maps are generated and uploaded only when the image build receives
+// SENTRY_AUTH_TOKEN as a BuildKit secret (docker.yml, default branch). They are deleted after
+// upload, so they never ship; without the token the build needs no Sentry access at all. Sentry
+// releases are created at deploy time, not here (DEPLOYMENT §5).
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
+
+export default withSentryConfig(withIntl(config), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: sentryAuthToken,
+  telemetry: false,
+  silent: !sentryAuthToken,
+  sourcemaps: { disable: !sentryAuthToken, deleteSourcemapsAfterUpload: true },
+  release: { create: false },
+  widenClientFileUpload: true,
+  // Only browser tracing reads it, and browsers report errors only.
+  routeManifestInjection: false,
+});

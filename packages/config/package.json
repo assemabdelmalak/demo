@@ -35,6 +35,11 @@
       "@radd/source": "./src/public-env/index.ts",
       "types": "./dist/public-env/index.d.ts",
       "default": "./dist/public-env/index.js"
+    },
+    "./observability": {
+      "@radd/source": "./src/observability/index.ts",
+      "types": "./dist/observability/index.d.ts",
+      "default": "./dist/observability/index.js"
     }
   },
   "scripts": {

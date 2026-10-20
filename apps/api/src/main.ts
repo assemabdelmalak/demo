@@ -1,3 +1,5 @@
+// Must stay the first import (Sentry instrumentation).
+import './instrument';
 import 'reflect-metadata';
 
 import { loadEnvOrExit } from '@radd/config/env';

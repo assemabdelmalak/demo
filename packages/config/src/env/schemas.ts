@@ -10,6 +10,7 @@ import {
   positiveInt,
   refineSecrets,
   requiredString,
+  sampleRate,
   url,
 } from './helpers.js';
 
@@ -22,6 +23,7 @@ const common = {
   GIT_SHA: z.string().min(1).default('dev'),
   APP_VERSION: z.string().min(1).default('0.0.0'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  SENTRY_TRACES_SAMPLE_RATE: sampleRate.default(0),
 };
 
 const publicUrls = {

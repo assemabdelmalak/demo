@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, expectRequestIds, test } from './fixtures';
 
 test.describe('diner home @smoke', () => {
   test('renders in the project language with the right direction', async ({ page }, testInfo) => {
@@ -49,6 +49,10 @@ test.describe('diner home @smoke', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectAccessible();
+  });
+
+  test('tags every response with a request ID', async ({ request }) => {
+    await expectRequestIds(request);
   });
 
   test('answers the health check', async ({ request }) => {

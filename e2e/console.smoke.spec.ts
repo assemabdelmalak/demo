@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, expectRequestIds, test } from './fixtures';
 
 test.describe('console home @smoke', () => {
   test('defaults to English, left to right', async ({ page }) => {
@@ -53,6 +53,10 @@ test.describe('console home @smoke', () => {
       await expectAccessible();
     });
   }
+
+  test('tags every response with a request ID', async ({ request }) => {
+    await expectRequestIds(request);
+  });
 
   test('answers the health check', async ({ request }) => {
     expect((await request.get('/healthz')).status()).toBe(200);

@@ -1,14 +1,16 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Processor } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { type Job, UnrecoverableError } from 'bullmq';
 
 import { QUEUES } from '@radd/shared';
 
+import { ReportingWorkerHost } from './reporting-worker-host';
+
 /** Proves the plumbing: validation, retries with backoff, and draining on shutdown (P0-T05). */
 @Processor('noop', { concurrency: QUEUES.noop.concurrency })
-export class NoopProcessor extends WorkerHost {
+export class NoopProcessor extends ReportingWorkerHost {
   private readonly logger = new Logger(NoopProcessor.name);
 
   async process(job: Job): Promise<{ echo: string }> {

@@ -19,8 +19,20 @@ FROM base AS build
 COPY --from=prune /repo/out/json/ .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
 COPY --from=prune /repo/out/full/ .
-# No env needed at build time: public config is read at request time (ADR-012).
-RUN pnpm turbo run build --filter=@radd/diner
+# No app env needed at build time: public config is read at request time (ADR-012).
+# Browser source maps are uploaded to Sentry only when docker.yml sets SENTRY_UPLOAD=true and
+# passes the token as a BuildKit secret (never a build arg, so it is not kept in the image).
+# SENTRY_UPLOAD is also part of the layer cache key, so an upload build never reuses a layer
+# built without one.
+ARG SENTRY_UPLOAD=false
+ARG SENTRY_ORG=
+ARG SENTRY_PROJECT=
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
+    if [ "$SENTRY_UPLOAD" = true ] && [ -z "$SENTRY_AUTH_TOKEN" ]; then \
+      echo "SENTRY_UPLOAD=true needs the sentry_auth_token secret" >&2; exit 1; \
+    fi; \
+    if [ "$SENTRY_UPLOAD" != true ]; then unset SENTRY_AUTH_TOKEN; fi; \
+    pnpm turbo run build --filter=@radd/diner
 
 FROM ${NODE_IMAGE} AS runtime
 ARG GIT_SHA=dev

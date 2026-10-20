@@ -1,4 +1,5 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, Inject, Logger } from '@nestjs/common';
+import { captureException } from '@sentry/nestjs';
 import { type FastifyReply, type FastifyRequest } from 'fastify';
 
 import { ERROR_CATALOGUE, type ProblemDetails } from '@radd/shared';
@@ -49,10 +50,10 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const problem = toProblem(exception, this.typeBase);
 
     if (problem.status >= 500) {
-      this.logger.error(
-        { err: exception, requestId: request.id, route: request.routeOptions.url },
-        'unhandled error',
-      );
+      const route = request.routeOptions.url;
+      this.logger.error({ err: exception, requestId: request.id, route }, 'unhandled error');
+      // Only server faults reach Sentry; 4xx are expected outcomes. A no-op without a DSN.
+      captureException(exception, { tags: { requestId: request.id, route: route ?? 'unmatched' } });
     }
 
     sendProblem(reply, request, problem, this.typeBase);

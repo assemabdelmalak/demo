@@ -1,8 +1,9 @@
 import { type INestApplicationContext } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { captureException } from '@sentry/node';
 import { Queue, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { detectIntegrationRuntime, startValkey, type StartedService } from '@radd/config/testing';
 import { DEFAULT_JOB_OPTIONS, QUEUE_PREFIX, type QueuePayloadInput } from '@radd/shared';
@@ -11,6 +12,8 @@ import { freePort, testEnv } from './env';
 import { HeartbeatService } from '../src/health/heartbeat.service';
 import { ProbeServer } from '../src/health/probe.server';
 import { WorkerModule } from '../src/worker.module';
+
+vi.mock('@sentry/node', () => ({ captureException: vi.fn() }));
 
 const runtime = await detectIntegrationRuntime(['valkey']);
 
@@ -54,6 +57,10 @@ describe.skipIf(!runtime.ready)('worker', () => {
     await valkey.stop();
   });
 
+  beforeEach(() => {
+    vi.mocked(captureException).mockClear();
+  });
+
   it('processes a noop job', async () => {
     const job = await enqueue({ message: 'hello from the API' });
     await expect(job.waitUntilFinished(events, 10_000)).resolves.toEqual({
@@ -72,12 +79,22 @@ describe.skipIf(!runtime.ready)('worker', () => {
     expect(failed?.attemptsMade).toBe(3);
     // Backoff of 1 s then 2 s between the three attempts.
     expect(Date.now() - started).toBeGreaterThanOrEqual(3_000);
+    // Retries are expected; only the final failure is reported, without the job data.
+    await vi.waitFor(() => {
+      expect(captureException).toHaveBeenCalledExactlyOnceWith(expect.any(Error), {
+        tags: { queue: 'noop', jobName: 'noop' },
+        extra: { jobId: job.id },
+      });
+    });
   });
 
   it('does not retry a job whose payload is invalid', async () => {
     const job = await queue.add('noop', { message: '' });
     await expect(job.waitUntilFinished(events, 10_000)).rejects.toThrow(/invalid noop payload/);
     expect((await queue.getJob(job.id ?? ''))?.attemptsMade).toBe(1);
+    await vi.waitFor(() => {
+      expect(captureException).toHaveBeenCalledOnce();
+    });
   });
 
   it('writes a heartbeat and reports healthy on the probe port', async () => {

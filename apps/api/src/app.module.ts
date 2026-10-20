@@ -1,5 +1,6 @@
 import { type DynamicModule, Module, type ModuleMetadata } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { LoggerModule } from 'nestjs-pino';
 import { createZodValidationPipe } from 'nestjs-zod';
 import { ZodError } from 'zod';
@@ -41,6 +42,8 @@ export class AppModule {
       module: AppModule,
       imports: [
         EnvModule.register(env),
+        // Names Sentry transactions after the route; inert when Sentry is not initialised.
+        SentryModule.forRoot(),
         LoggerModule.forRoot({
           pinoHttp: {
             ...loggerOptions({

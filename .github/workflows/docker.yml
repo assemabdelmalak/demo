@@ -35,12 +35,18 @@ jobs:
           - app: diner
             port: 3000
             health: /healthz
+            sentry_project_var: SENTRY_PROJECT_DINER
           - app: console
             port: 3001
             health: /healthz
+            sentry_project_var: SENTRY_PROJECT_CONSOLE
     env:
       PUSH: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
       IMAGE: ghcr.io/${{ github.repository_owner }}/radd-menu-${{ matrix.app }}
+      # Browser source maps go to Sentry for images that get pushed, once the owner adds the
+      # SENTRY_AUTH_TOKEN secret (P0-T09). The Nest apps need none: --enable-source-maps maps
+      # their stack traces before Sentry sees them.
+      SENTRY_UPLOAD: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && matrix.sentry_project_var != '' && secrets.SENTRY_AUTH_TOKEN != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -62,6 +68,10 @@ jobs:
           build-args: |
             GIT_SHA=${{ github.sha }}
             APP_VERSION=0.0.0+${{ github.sha }}
+            SENTRY_UPLOAD=${{ env.SENTRY_UPLOAD }}
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ matrix.sentry_project_var && vars[matrix.sentry_project_var] || '' }}
+          secrets: ${{ env.SENTRY_UPLOAD == 'true' && format('sentry_auth_token={0}', secrets.SENTRY_AUTH_TOKEN) || '' }}
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
       - name: Stays under 250 MB
@@ -101,4 +111,8 @@ jobs:
           build-args: |
             GIT_SHA=${{ github.sha }}
             APP_VERSION=0.0.0+${{ github.sha }}
+            SENTRY_UPLOAD=${{ env.SENTRY_UPLOAD }}
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ matrix.sentry_project_var && vars[matrix.sentry_project_var] || '' }}
+          secrets: ${{ env.SENTRY_UPLOAD == 'true' && format('sentry_auth_token={0}', secrets.SENTRY_AUTH_TOKEN) || '' }}
           cache-from: type=gha,scope=${{ matrix.app }}

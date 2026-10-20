@@ -17,6 +17,9 @@ export const positiveInt = z.preprocess(emptyToUndefined, z.coerce.number().int(
 
 export const bool = z.preprocess(emptyToUndefined, z.stringbool());
 
+/** A probability such as a trace sample rate. */
+export const sampleRate = z.preprocess(emptyToUndefined, z.coerce.number().min(0).max(1));
+
 /** Comma-separated list, e.g. `TRUSTED_ORIGINS=http://a,http://b`. */
 export function csv<T extends z.ZodType>(item: T, { min = 0 }: { min?: number } = {}) {
   return z.preprocess(
