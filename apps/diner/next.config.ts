@@ -46,8 +46,15 @@ export default withSentryConfig(withIntl(config), {
   telemetry: false,
   silent: !sentryAuthToken,
   sourcemaps: { disable: !sentryAuthToken, deleteSourcemapsAfterUpload: true },
+  // Only reached when uploading. A failed upload must fail the build: otherwise the image layer is
+  // cached without maps and later builds of the same sources never retry.
+  errorHandler: (error) => {
+    throw error;
+  },
   release: { create: false },
   widenClientFileUpload: true,
   // Only browser tracing reads it, and browsers report errors only.
   routeManifestInjection: false,
+  // Browsers report errors only, so navigations are not traced (ADR-019).
+  suppressOnRouterTransitionStartWarning: true,
 });
