@@ -48,9 +48,17 @@ export function formatEnvIssues(app: string, issues: readonly EnvIssue[]): strin
   ].join('\n');
 }
 
+/**
+ * `.env` files write unset values as `KEY=`. Dropping them before parsing lets `.default()` apply;
+ * a schema-level default never sees `''` and would reject it instead.
+ */
+function withoutEmpty(source: Source): Source {
+  return Object.fromEntries(Object.entries(source).filter(([, value]) => value !== ''));
+}
+
 /** Pure parse, for tests and callers that want to handle failure themselves. */
 export function parseEnv<A extends AppName>(app: A, source: Source): EnvResult<A> {
-  const result = envSchemas[app].safeParse(source);
+  const result = envSchemas[app].safeParse(withoutEmpty(source));
   if (result.success) return { ok: true, env: result.data as Env<A> };
   return { ok: false, issues: toIssues(result.error, source) };
 }
@@ -83,7 +91,7 @@ export function loadPublicEnv<A extends WebAppName>(
   app: A,
   source: Source = process.env,
 ): PublicEnv<A> {
-  const result = publicEnvSchemas[app].safeParse(source);
+  const result = publicEnvSchemas[app].safeParse(withoutEmpty(source));
   if (!result.success)
     throw new EnvValidationError(`${app} (public)`, toIssues(result.error, source));
   return result.data as PublicEnv<A>;

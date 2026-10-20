@@ -81,6 +81,21 @@ describe('parseEnv', () => {
     ]);
   });
 
+  it('applies the default when a variable with one is empty', () => {
+    const result = parseEnv('worker', {
+      ...example,
+      DATABASE_POOL_MAX: '',
+      WORKER_HEALTH_PORT: '',
+      AI_ENABLED: '',
+      APP_ENV: '',
+    });
+    if (!result.ok) throw new Error(`expected valid env: ${JSON.stringify(result.issues)}`);
+    expect(result.env.DATABASE_POOL_MAX).toBe(20);
+    expect(result.env.WORKER_HEALTH_PORT).toBe(4100);
+    expect(result.env.AI_ENABLED).toBe(true);
+    expect(result.env.APP_ENV).toBe('local');
+  });
+
   it('rejects malformed values with a reason', () => {
     const issues = issuesFor('api', {
       ...example,
