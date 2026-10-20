@@ -22,8 +22,8 @@ T01 → T02 → T03 → T07.a → T04.a–c → T05 → T04.d → T06.a–c → 
 
 | Task | Status | Date | Notes / follow-ups | PR |
 |---|---|---|---|---|
-| P0-T01 Monorepo scaffold | 🟨 | 2026-10-20 | pnpm 10 + Turborepo 2, Node 24, TS 5.9 strict, `packages/config` (tsconfig bases, ESLint 10 flat configs, Prettier), lefthook + lint-staged + commitlint, Renovate, CI lint/typecheck. Awaiting first CI run. | |
-| P0-T02 Env configuration | ⬜ | | | |
+| P0-T01 Monorepo scaffold | ✅ | 2026-10-20 | pnpm 10 + Turborepo 2, Node 24, TS 5.9 strict, `packages/config` (tsconfig bases, ESLint 10 flat configs, Prettier), lefthook + lint-staged + commitlint (bad messages rejected), Renovate, CI lint/format/typecheck green ([run 1](https://github.com/assemabdelmalak/demo/actions/runs/39401029840)). | |
+| P0-T02 Env configuration | 🟨 | 2026-10-20 | `@radd/config/env`: zod schema per app, `loadEnv` / `loadEnvOrExit` (lists every problem, never echoes values), placeholder secrets rejected in staging/production, browser-safe public schemas, drift tests against `.env.example` (22 unit tests). Apps call it from T04–T06; the client-bundle secret grep lands in T08. | |
 | P0-T03 Local infrastructure | ⬜ | | | |
 | P0-T07.a Test harness: Vitest + Testcontainers | ⬜ | | | |
 | P0-T04.a API bootstrap: logger, request ID, errors, live health | ⬜ | | | |

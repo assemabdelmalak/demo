@@ -15,7 +15,8 @@
     "lint": "turbo run lint && eslint --no-warn-ignored '*.{js,mjs,ts}'",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "turbo run test"
   },
   "prettier": "@radd/config/prettier",
   "devDependencies": {

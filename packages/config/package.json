@@ -10,10 +10,19 @@
     "./eslint/nest": "./eslint/nest.js",
     "./eslint/react": "./eslint/react.js",
     "./eslint/next": "./eslint/next.js",
-    "./prettier": "./prettier/index.js"
+    "./prettier": "./prettier/index.js",
+    "./env": {
+      "@radd/source": "./src/env/index.ts",
+      "types": "./dist/env/index.d.ts",
+      "default": "./dist/env/index.js"
+    }
   },
   "scripts": {
-    "lint": "eslint ."
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@eslint/js": "10.0.1",
@@ -22,16 +31,26 @@
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",
-    "typescript-eslint": "8.72.0"
+    "typescript-eslint": "8.72.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
     "eslint": "10.13.0",
     "prettier": "3.9.10",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
   },
   "peerDependencies": {
     "eslint": "^10.0.0",
     "prettier": "^3.0.0",
     "typescript": "^5.9.0"
-  }
+  },
+  "files": [
+    "dist",
+    "eslint",
+    "prettier",
+    "tsconfig"
+  ]
 }
