@@ -19,7 +19,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "turbo run test",
-    "test:int": "turbo run test:int"
+    "test:int": "turbo run test:int",
+    "openapi": "turbo run build --filter=@radd/api... && pnpm --filter @radd/api openapi && pnpm --filter @radd/api-client generate"
   },
   "prettier": "@radd/config/prettier",
   "devDependencies": {

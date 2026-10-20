@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -66,3 +69,15 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Integration tests (Testcontainers)
         run: pnpm test:int
+
+  openapi-drift:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Regenerate the OpenAPI document and client types
+        run: pnpm openapi
+      - name: Fail if they differ from what is committed
+        run: git diff --exit-code -- packages/api-client

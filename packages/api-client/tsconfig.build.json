@@ -1,0 +1,9 @@
+{
+  "extends": "@radd/config/tsconfig/library.json",
+  "compilerOptions": {
+    // Builds resolve sibling packages to their emitted dist, never their sources (ADR-011).
+    "customConditions": [],
+    "lib": ["ES2023", "DOM"]
+  },
+  "exclude": ["src/**/*.test.ts"]
+}

@@ -1,6 +1,7 @@
 import helmet from '@fastify/helmet';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { SwaggerModule } from '@nestjs/swagger';
 import { type FastifyError, type FastifyReply, type FastifyRequest } from 'fastify';
 import { Logger } from 'nestjs-pino';
 
@@ -11,6 +12,7 @@ import { sendProblem } from './common/problem.filter';
 import { genRequestId, REQUEST_ID_HEADER } from './common/request-id';
 import { type ApiEnv } from './config/env.module';
 import { IDEMPOTENCY_HEADER, IDEMPOTENT_REPLAYED_HEADER } from './idempotency/idempotent.decorator';
+import { buildOpenApiDocument, DOCS_PATH } from './openapi/document';
 
 export const API_PREFIX = 'v1';
 
@@ -70,6 +72,13 @@ export async function createApp(
     contentSecurityPolicy: env.APP_ENV === 'production' ? undefined : false,
     crossOriginResourcePolicy: { policy: 'same-site' },
   });
+
+  // Interactive docs outside production only (P0-T04); `pnpm openapi` exports the same document.
+  if (env.APP_ENV !== 'production') {
+    SwaggerModule.setup(DOCS_PATH, app, () => buildOpenApiDocument(app), {
+      jsonDocumentUrl: `${DOCS_PATH}/openapi.json`,
+    });
+  }
 
   return app;
 }
