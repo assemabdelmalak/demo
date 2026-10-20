@@ -14,6 +14,7 @@ import { type ApiEnv, EnvModule } from './config/env.module';
 import { HealthModule } from './health/health.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { type IdempotencyOptions } from './idempotency/idempotency.store';
+import { QueuesModule } from './queues/queues.module';
 import { ThrottlingModule } from './throttling/throttling.module';
 import { ValkeyModule } from './valkey/valkey.module';
 
@@ -61,6 +62,7 @@ export class AppModule {
           },
         }),
         ValkeyModule,
+        QueuesModule,
         ThrottlingModule,
         IdempotencyModule.register(options.idempotency),
         HealthModule,
