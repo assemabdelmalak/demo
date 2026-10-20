@@ -46,11 +46,31 @@ The application is built by an AI coding agent, Claude Code, following these doc
 
 ```bash
 pnpm install            # also installs git hooks (lefthook: lint-staged + commitlint)
-pnpm lint               # ESLint across all workspaces
-pnpm typecheck          # tsc --noEmit across all workspaces
-pnpm format:check       # Prettier
+cp .env.example .env    # local defaults; every app validates its env at start-up
+pnpm dev:infra          # Postgres, Valkey, SeaweedFS (S3) and Mailpit in Docker
+pnpm dev                # api, worker, diner and console in watch mode
 ```
 
-Commits must follow [Conventional Commits](https://www.conventionalcommits.org/), e.g. `feat(sessions): add participant join flow`.
+| What | URL |
+|---|---|
+| Diner app | http://localhost:3000 |
+| Console | http://localhost:3001 |
+| API readiness / API docs | http://localhost:4000/v1/health/ready · http://localhost:4000/v1/docs |
+| Worker health | http://localhost:4100/healthz |
+| Mailpit (local email) | http://localhost:8025 |
+| SeaweedFS admin (local S3) | http://localhost:9001 |
 
-More commands (`pnpm dev:infra`, `pnpm dev`, `pnpm test`, …) are listed in `CLAUDE.md` §6 and are added as Phase 0 lands.
+English is the default language; the **ع / EN** switch changes it and is remembered (ADR-009).
+
+Quality gates (CI runs the same):
+
+```bash
+pnpm lint && pnpm typecheck && pnpm test    # no Docker or network needed
+pnpm test:int                               # Testcontainers; needs Docker
+pnpm build && pnpm test:e2e:smoke           # Playwright; run `pnpm exec playwright install chromium` once.
+                                            # With the stack running, E2E_API_URL=http://localhost:4000 adds the API checks.
+pnpm openapi                                # regenerate the OpenAPI spec and packages/api-client
+pnpm dev:infra:down                         # stop local infrastructure
+```
+
+Commits must follow [Conventional Commits](https://www.conventionalcommits.org/), e.g. `feat(sessions): add participant join flow`. All commands are listed in `CLAUDE.md` §6.
