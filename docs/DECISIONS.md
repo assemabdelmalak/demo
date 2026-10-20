@@ -134,3 +134,9 @@ Format: `ADR-NNN — Title · Date · Status`, then Context, Decision, Consequen
   - Request logs keep method, path (query string dropped, receipt tokens masked), a small header allowlist (user agent, content type and length, origin), status and request ID. No cookies, auth headers or client IPs. Errors are logged as name, message, code, stack and cause only, so client libraries cannot leak payloads (ioredis attaches full commands).
   - Helmet on the API with default CSP in production; CSP is disabled outside production so Swagger UI works. Full CSP with nonces for the Next apps is P10-T01.
 - **Consequences.** Clients branch only on `code`. A route that carries a secret in its path must add a pattern to `@radd/config/logging`.
+
+## ADR-018 — Console light and dark tokens · 2026-10-20 · Accepted
+
+- **Context.** UX_SPEC defines restaurant presets for the diner but no console palette, while P0-T06 requires a dark-mode switch in the console, which is built on shadcn/ui token names.
+- **Decision.** `packages/ui/src/styles/console.css` maps the shadcn names (`background`, `foreground`, `card`, `border`, `ring`, `destructive`, …) to a light set derived from the Plain preset with Zaatar's primary, and a dark set derived from the Rooftop preset. `data-theme="dark"` on `<html>` switches them; a cookie read by the server keeps the first paint correct. The shared primitives read the restaurant tokens, which the dark set points at the console palette.
+- **Consequences.** The console stays visually related to the diner presets. The kitchen display's dark UI (P4-T10) can reuse the dark set.
