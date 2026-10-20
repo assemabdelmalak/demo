@@ -11,6 +11,8 @@
   "scripts": {
     "prepare": "lefthook install",
     "dev": "turbo run dev",
+    "dev:infra": "docker compose -f infra/docker-compose.dev.yml up -d --wait",
+    "dev:infra:down": "docker compose -f infra/docker-compose.dev.yml down",
     "build": "turbo run build",
     "lint": "turbo run lint && eslint --no-warn-ignored '*.{js,mjs,ts}'",
     "typecheck": "turbo run typecheck",
