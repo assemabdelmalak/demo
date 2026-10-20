@@ -1,0 +1,33 @@
+{
+  "name": "radd-menu",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=24.11.0 <25",
+    "pnpm": ">=10.34.7 <11"
+  },
+  "scripts": {
+    "prepare": "lefthook install",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint && eslint --no-warn-ignored '*.{js,mjs,ts}'",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "prettier": "@radd/config/prettier",
+  "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "@radd/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "eslint": "10.13.0",
+    "lefthook": "2.2.2",
+    "lint-staged": "17.6.0",
+    "prettier": "3.9.10",
+    "turbo": "2.11.9",
+    "typescript": "5.9.3"
+  }
+}

@@ -7,7 +7,9 @@ Claude Code keeps this file up to date after **every** task.
 
 ## Current phase
 
-Phase 0 — Foundation (not started)
+Phase 0 — Foundation (in progress on branch `phase/00-foundation`, PR to `master`)
+
+**Environment note.** The agent's container has no Docker daemon. Anything that needs Docker (`pnpm dev:infra`, `pnpm test:int`, e2e-smoke, image builds) is verified in GitHub Actions. A task that depends on Docker is marked ✅ only after its CI job is green; until then it stays 🟨 "awaiting CI".
 
 ## Needs owner
 
@@ -15,15 +17,24 @@ Phase 0 — Foundation (not started)
 
 ## Log
 
+Phase 0 tasks were split into sub-tasks (IMPLEMENTATION_PLAN "Size") and run in this order, because the API and worker integration tests need the T07 test helpers and the T06 smoke tests need the T07.b Playwright config:
+T01 → T02 → T03 → T07.a → T04.a–c → T05 → T04.d → T06.a–c → T07.b → T08 → T09 → T10.
+
 | Task | Status | Date | Notes / follow-ups | PR |
 |---|---|---|---|---|
-| P0-T01 Monorepo scaffold | ⬜ | | | |
+| P0-T01 Monorepo scaffold | 🟨 | 2026-10-20 | pnpm 10 + Turborepo 2, Node 24, TS 5.9 strict, `packages/config` (tsconfig bases, ESLint 10 flat configs, Prettier), lefthook + lint-staged + commitlint, Renovate, CI lint/typecheck. Awaiting first CI run. | |
 | P0-T02 Env configuration | ⬜ | | | |
 | P0-T03 Local infrastructure | ⬜ | | | |
-| P0-T04 API skeleton | ⬜ | | | |
+| P0-T07.a Test harness: Vitest + Testcontainers | ⬜ | | | |
+| P0-T04.a API bootstrap: logger, request ID, errors, live health | ⬜ | | | |
+| P0-T04.b API security: Helmet, CORS, rate limiting | ⬜ | | | |
+| P0-T04.c API idempotency | ⬜ | | | |
 | P0-T05 Worker skeleton | ⬜ | | | |
-| P0-T06 Next.js app skeletons | ⬜ | | | |
-| P0-T07 Testing harness | ⬜ | | | |
+| P0-T04.d API readiness, Swagger, `pnpm openapi` | ⬜ | | | |
+| P0-T06.a Next.js apps (diner, console) | ⬜ | | | |
+| P0-T06.b `packages/ui`: tokens, theme, primitives | ⬜ | | | |
+| P0-T06.c `packages/api-client` | ⬜ | | | |
+| P0-T07.b Test harness: Playwright, axe, Lighthouse CI | ⬜ | | | |
 | P0-T08 CI pipeline | ⬜ | | | |
 | P0-T09 Observability bootstrap | ⬜ | | | |
 | P0-T10 Docs scaffolding | ⬜ | | | |

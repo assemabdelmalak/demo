@@ -39,3 +39,18 @@ The application is built by an AI coding agent, Claude Code, following these doc
 1. Create a private GitHub repo and put these files at its root.
 2. Open Claude Code on the repo.
 3. Paste the kickoff prompt from `OWNER_CHECKLIST.md` §0.
+
+## Developer quickstart
+
+**Prerequisites:** Node.js 24 (`.nvmrc`), pnpm 10 via Corepack (`corepack enable`), and Docker for local infrastructure.
+
+```bash
+pnpm install            # also installs git hooks (lefthook: lint-staged + commitlint)
+pnpm lint               # ESLint across all workspaces
+pnpm typecheck          # tsc --noEmit across all workspaces
+pnpm format:check       # Prettier
+```
+
+Commits must follow [Conventional Commits](https://www.conventionalcommits.org/), e.g. `feat(sessions): add participant join flow`.
+
+More commands (`pnpm dev:infra`, `pnpm dev`, `pnpm test`, …) are listed in `CLAUDE.md` §6 and are added as Phase 0 lands.
