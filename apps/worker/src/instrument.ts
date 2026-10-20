@@ -16,3 +16,15 @@ if (env.SENTRY_DSN_WORKER) {
     }),
   );
 }
+
+/**
+ * Startup failures must end the process so the container is restarted. With Sentry initialised,
+ * its unhandled-rejection handler would only log them and leave a process with no listener.
+ */
+export async function exitOnStartupFailure(error: unknown): Promise<never> {
+  const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  process.stderr.write(`worker failed to start: ${detail}\n`);
+  Sentry.captureException(error);
+  await Sentry.close(2_000);
+  process.exit(1);
+}

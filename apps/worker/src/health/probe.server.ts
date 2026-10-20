@@ -37,9 +37,15 @@ export class ProbeServer implements OnApplicationBootstrap, OnApplicationShutdow
         }),
       );
     });
-    await new Promise<void>((resolve) =>
-      this.server?.listen(this.env.WORKER_HEALTH_PORT, '0.0.0.0', resolve),
-    );
+    // A port already in use must fail start-up rather than surface as an uncaught 'error' event.
+    const server = this.server;
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(this.env.WORKER_HEALTH_PORT, '0.0.0.0', () => {
+        server.off('error', reject);
+        resolve();
+      });
+    });
   }
 
   get port(): number {

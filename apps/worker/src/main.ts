@@ -1,5 +1,6 @@
-// Must stay the first import (Sentry instrumentation).
-import './instrument';
+// Must stay the first import: Sentry has to instrument modules before they load.
+// eslint-disable-next-line import-x/order
+import { exitOnStartupFailure } from './instrument';
 import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
@@ -22,4 +23,4 @@ async function bootstrap(): Promise<void> {
   logger.log({ healthPort: env.WORKER_HEALTH_PORT }, 'worker started');
 }
 
-void bootstrap();
+bootstrap().catch(exitOnStartupFailure);
