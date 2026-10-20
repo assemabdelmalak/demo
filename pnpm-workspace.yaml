@@ -22,8 +22,19 @@ ignoredBuiltDependencies:
 overrides:
   # TypeScript 7 (native) has no compiler API; typescript-eslint and openapi-typescript need 5.x. See ADR-011.
   typescript: 5.9.3
+  # @nestjs/platform-fastify 11.2.7 pins fastify 5.11.3, which has four high advisories
+  # (GHSA-667r-xxjv-c9mm, GHSA-p68q-wchp-6fh7, GHSA-hwr6-493r-vm6h, GHSA-9q9j-q6p8-xq58).
+  # 5.12.7 is a compatible 5.x patch release; drop this once Nest ships it.
+  fastify: 5.12.7
 
 peerDependencyRules:
   allowedVersions:
     # Declares eslint <=9 but runs cleanly on ESLint 10 (checked 2026-10-20). See ADR-011.
     eslint-plugin-jsx-a11y>eslint: '10'
+
+auditConfig:
+  ignoreGhsas:
+    # braces <=3.0.3 stack exhaustion on deeply nested glob patterns; no patched release exists.
+    # Only reached through @next/eslint-plugin-next > fast-glob at lint time, on patterns we write.
+    # Never shipped in an image. Revisit when a fix is published (Renovate will propose it).
+    - GHSA-vfj7-8cjw-p6xm

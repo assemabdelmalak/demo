@@ -1,4 +1,9 @@
-// Lints root-level files only; each workspace has its own eslint.config.js.
+// Lints root-level files, the Playwright suite and repo scripts; each workspace has its own config.
+import { defineConfig } from 'eslint/config';
+
 import { base } from '@radd/config/eslint/base';
 
-export default base({ tsconfigRootDir: import.meta.dirname });
+export default defineConfig(base({ tsconfigRootDir: import.meta.dirname }), {
+  files: ['scripts/**/*.mjs'],
+  rules: { 'no-console': 'off' },
+});

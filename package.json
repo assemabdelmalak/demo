@@ -14,7 +14,7 @@
     "dev:infra": "docker compose -f infra/docker-compose.dev.yml up -d --wait",
     "dev:infra:down": "docker compose -f infra/docker-compose.dev.yml down",
     "build": "turbo run build",
-    "lint": "turbo run lint && eslint --no-warn-ignored '*.{js,mjs,ts}' 'e2e/**/*.ts'",
+    "lint": "turbo run lint && eslint --no-warn-ignored '*.{js,mjs,ts}' 'e2e/**/*.ts' 'scripts/**/*.mjs'",
     "typecheck": "turbo run typecheck && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
