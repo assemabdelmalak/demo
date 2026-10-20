@@ -63,6 +63,9 @@
 
 See `.env.example`. Set them per environment in Coolify. Secrets are never stored in Git.
 
+- Staging and production must set `CLIENT_IP_HEADER=cf-connecting-ip` on the API. Without it every diner appears to come from the proxy's address and shares one rate-limit bucket (ADR-016).
+- Every `*_SECRET` must be a random value of at least 32 characters (`openssl rand -base64 48`); the apps refuse to start in staging or production with the `change-me` placeholders.
+
 ## 5. CI/CD (GitHub Actions)
 
 - **PR:** lint, typecheck, unit, integration, build, e2e-smoke, lighthouse, eval-ai (conditional).

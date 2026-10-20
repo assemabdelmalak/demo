@@ -101,3 +101,36 @@ Format: `ADR-NNN — Title · Date · Status`, then Context, Decision, Consequen
 - **Context.** `.env.example` connects as `app_runtime`, `app_migrator` and `app_admin`, but the real roles, grants and RLS policies are P1-T03 work. The API readiness check in P0 already needs to connect.
 - **Decision.** `infra/postgres/init/02-local-roles.sql` creates the three login roles for local development only (`app_admin` with BYPASSRLS, `app_runtime` without), makes `app_migrator` the database and schema owner, and grants `CONNECT`/`USAGE`. It is marked local-only.
 - **Consequences.** P1-T03's role migration must be idempotent (`IF NOT EXISTS`) so it applies cleanly on top of these roles, and is the only source of truth for staging and production.
+
+## ADR-015 — Idempotency semantics · 2026-10-20 · Accepted
+
+- **Context.** API §1 asks for Idempotency-Key replay for 24 h, keyed by actor and route, with 422 on a different body. It leaves open what happens while the first request is still running, which outcomes are replayed, and what happens when Valkey is unavailable. A review also showed that a handler outliving a fixed in-flight lock could run twice.
+- **Decision.**
+  - Opt-in per route with `@Idempotent()`; the header must be a UUID (`400 IDEMPOTENCY_KEY_REQUIRED` otherwise). PUT routes may opt in too.
+  - Scope: HMAC of the actor (user → participant → device → client IP) + method + route template + key. Fingerprint: SHA-256 of method, URL and canonical JSON body (keys sorted, depth capped at 64; deeper bodies get `400 BAD_REQUEST`).
+  - A claim writes an in-flight marker with a random token (60 s TTL). A heartbeat extends it while the handler runs (capped at 15 min). Storing, releasing and refreshing are compare-and-set on the token, so a request that lost its claim cannot overwrite a newer one.
+  - A repeat while in flight → `409 IDEMPOTENCY_IN_PROGRESS`, `Retry-After: 1`. Same key, different fingerprint → `422 IDEMPOTENCY_MISMATCH`.
+  - Replayed: 2xx and deterministic 4xx (status, body, and the `Location`, `Content-Location`, `ETag`, `Last-Modified` headers), marked `Idempotent-Replayed: true`. Never replayed: 5xx, 401, 403, 408, 429; their marker is released so a retry runs again.
+  - Valkey unavailable → `503 SERVICE_UNAVAILABLE` (fail closed). Duplicate orders or payments are worse than a brief retry.
+- **Consequences.** The optional Postgres `idempotency_keys` fallback (DATA_MODEL §10) is not used. Clients must create a new key for a new attempt after a 4xx.
+
+## ADR-016 — Rate limiting: sliding window per actor; client IP from one trusted header · 2026-10-20 · Accepted
+
+- **Context.** API §8 asks for Valkey sliding windows keyed by device, participant or user, never IP alone, while diners share restaurant Wi-Fi. `@nestjs/throttler`'s community Redis storages count in fixed windows and key per handler. A review showed that trusting `X-Forwarded-For` lets clients pick their own IP, because Cloudflare appends to a client-supplied header.
+- **Decision.**
+  - Custom `ThrottlerStorage`: a sorted-set sliding-window log in Lua using Valkey's clock. Rejected requests are not recorded; `blockDuration` penalties are not used.
+  - The default throttler is one bucket per actor across all routes (300/min). Scoped limits from API §8 are added as named throttlers with their own keys when their endpoints land.
+  - Tracker: user → participant → device → client IP, hashed with HMAC-SHA256 (`ACTOR_HASH_SECRET`) before it reaches a Valkey key name. Auth that sets the principal must run in a Fastify `onRequest`/`preHandler` hook, because the global throttler guard runs before controller guards.
+  - Fastify `trustProxy` is off. The client IP is the socket address, or the header named by `CLIENT_IP_HEADER` (`cf-connecting-ip` in staging and production) when it holds a valid IP. IPv6 addresses are grouped by /64.
+  - If Valkey is unreachable the limiter fails open and logs a warning; health routes are never throttled.
+- **Consequences.** Limits are exact across API instances. Forgetting `CLIENT_IP_HEADER` in a deployed environment makes every anonymous diner share the proxy's bucket; DEPLOYMENT §4 says to set it.
+
+## ADR-017 — HTTP error and logging conventions; full CSP deferred · 2026-10-20 · Accepted
+
+- **Context.** API §1 fixes problem+json with stable codes but not the status for validation failures, how router-level errors are answered, or what request logs contain. SEC §2 wants CSP with nonces, which interacts with Next.js caching and Swagger UI.
+- **Decision.**
+  - Validation failures → `400 VALIDATION_FAILED` with `errors[]` (path, message). Unknown routes → `404 NOT_FOUND`. Fastify router errors (bad encoding, overlong params) use the same problem shape via `frameworkErrors`. 5xx bodies never carry internal messages. `type` is `https://docs.<APP_DOMAIN>/errors/<CODE>`.
+  - `DomainError` extensions cannot shadow `type`, `title`, `status`, `code`, `detail`, `errors`, `requestId` or `instance`.
+  - Request logs keep method, path (query string dropped, receipt tokens masked), a small header allowlist (user agent, content type and length, origin), status and request ID. No cookies, auth headers or client IPs. Errors are logged as name, message, code, stack and cause only, so client libraries cannot leak payloads (ioredis attaches full commands).
+  - Helmet on the API with default CSP in production; CSP is disabled outside production so Swagger UI works. Full CSP with nonces for the Next apps is P10-T01.
+- **Consequences.** Clients branch only on `code`. A route that carries a secret in its path must add a pattern to `@radd/config/logging`.

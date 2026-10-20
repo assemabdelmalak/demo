@@ -13,6 +13,8 @@
   - Keys are stored in Valkey for 24 h, keyed by actor and route.
   - A repeated key returns the stored response.
   - The same key with a different body → `422 IDEMPOTENCY_MISMATCH`.
+  - A missing or non-UUID key on such a route → `400 IDEMPOTENCY_KEY_REQUIRED`; a repeat while the first request is still running → `409 IDEMPOTENCY_IN_PROGRESS` with `Retry-After: 1`.
+  - Replays carry `Idempotent-Replayed: true`. 2xx and deterministic 4xx outcomes are replayed; 5xx, 401, 403, 408 and 429 never are (ADR-015).
 - **Pagination.** `?cursor=…&limit=…` (max 100). The response is `{ items, nextCursor }`.
 - **Versioning.** Path `/v1`. Breaking changes require `/v2`.
 - **OpenAPI.** Generated from the zod schemas (nestjs-zod) at build time. `pnpm openapi` emits `packages/api-client/openapi.json` and its types.
@@ -243,5 +245,10 @@ Every route under `/restaurants/{rid}` checks membership of the restaurant's org
 | Events ingest | 10 requests / device / min |
 | Console writes | 300 / user / min |
 | Auth (login / OTP) | Better Auth defaults plus 10 / IP / 15 min for OTP send (IP is acceptable here) |
+
+Implementation notes (ADR-016):
+- Every route shares one default bucket of 300 requests per actor per minute. Scoped limits above are named throttlers with their own keys.
+- The actor is the user, participant or device set by auth before the throttler runs; only requests with no identity fall back to the client IP. The client IP comes from `CLIENT_IP_HEADER` (`cf-connecting-ip` behind Cloudflare), never from `X-Forwarded-For`, and IPv6 addresses are grouped by /64.
+- A limit of 0 blocks the endpoint. If Valkey is unreachable the limiter allows the request (fails open); idempotency fails closed instead.
 
 Cloudflare WAF adds coarse per-IP protection with generous thresholds: 600 req/min per IP on `/v1/public/*`, because a whole restaurant can share one IP.
