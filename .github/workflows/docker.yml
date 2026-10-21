@@ -1,7 +1,8 @@
 name: Docker
 
-# Builds every image on every push and verifies it starts healthy and stays under 250 MB
-# (DEPLOYMENT §2). Only the default branch pushes to GHCR, tagged sha-<7> and staging (ADR-010).
+# Builds every image on every push and pull request (the PR run builds the merge result) and
+# verifies it starts healthy and stays under 250 MB (DEPLOYMENT §2). Only the default branch pushes
+# to GHCR, tagged sha-<7> and staging (ADR-010).
 on:
   push:
   pull_request:
@@ -18,7 +19,6 @@ jobs:
   image:
     # A stable check name for branch protection.
     name: image (${{ matrix.app }})
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
