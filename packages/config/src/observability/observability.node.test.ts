@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { type AddressInfo } from 'node:net';
 
 import * as Sentry from '@sentry/node';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { sentryOptions } from './index.js';
 
@@ -85,9 +85,24 @@ describe('Node Sentry with the shared options', () => {
     for (const secret of SECRETS) expect(sent).not.toContain(secret);
   });
 
+  // A forged trace: sampled flag set and the random number the SDK compares against set to 0.
+  const FORGED_TRACE = {
+    'sentry-trace': '0123456789abcdef0123456789abcdef-0123456789abcdef-1',
+    baggage: 'sentry-trace_id=0123456789abcdef0123456789abcdef,sentry-sample_rand=0',
+  };
+
   it('ignores a client that asks for its own request to be traced', async () => {
     const lines = initRecording(0);
-    await postSignIn({ 'sentry-trace': '0123456789abcdef0123456789abcdef-0123456789abcdef-1' });
+    await postSignIn(FORGED_TRACE);
+
+    expect(lines.join('\n')).not.toContain('"type":"span"');
+  });
+
+  it('keeps that decision local at a non-zero rate too', async () => {
+    // Our draw says "not this one"; the forged baggage says "always".
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const lines = initRecording(0.5);
+    await postSignIn(FORGED_TRACE);
 
     expect(lines.join('\n')).not.toContain('"type":"span"');
   });

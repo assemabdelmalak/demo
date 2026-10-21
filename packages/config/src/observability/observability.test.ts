@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   scrubBreadcrumb,
@@ -276,8 +276,13 @@ describe('sentryOptions', () => {
     ).toEqual(['http://localhost:4000']);
   });
 
-  it('samples at the configured rate whatever an incoming trace asks for', () => {
+  it('decides sampling locally as all or nothing', () => {
+    const random = vi.spyOn(Math, 'random');
+    random.mockReturnValue(0.1);
     expect(sentryOptions(base).tracesSampler()).toBe(0);
-    expect(sentryOptions({ ...base, tracesSampleRate: 0.2 }).tracesSampler()).toBe(0.2);
+    expect(sentryOptions({ ...base, tracesSampleRate: 0.2 }).tracesSampler()).toBe(1);
+    random.mockReturnValue(0.3);
+    expect(sentryOptions({ ...base, tracesSampleRate: 0.2 }).tracesSampler()).toBe(0);
+    expect(sentryOptions({ ...base, tracesSampleRate: 1 }).tracesSampler()).toBe(1);
   });
 });

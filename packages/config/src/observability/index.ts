@@ -226,9 +226,12 @@ export function sentryOptions({
     release,
     environment,
     dataCollection: DATA_COLLECTION,
-    // A sampler instead of a rate: a client could otherwise force tracing of its own requests by
-    // sending `sentry-trace: …-1`, which the SDK honours even at rate 0.
-    tracesSampler: () => tracesSampleRate,
+    // Decided here, never by the client. When a request continues an incoming trace, the SDK
+    // honours `sentry-trace: …-1` and compares a rate against the random number in the client's
+    // `baggage`, so any client could trace (and spend the span quota on) all its requests.
+    // Returning only 0 or 1 makes both irrelevant. Kept spans therefore report a sample rate of 1:
+    // percentiles are right, throughput counts are not extrapolated.
+    tracesSampler: () => (Math.random() < tracesSampleRate ? 1 : 0),
     tracePropagationTargets,
     integrations: [traceContextScrubbing()],
     beforeSend: scrubEvent,
