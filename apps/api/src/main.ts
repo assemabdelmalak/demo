@@ -4,11 +4,14 @@ import { exitOnStartupFailure } from './instrument';
 import 'reflect-metadata';
 
 import { loadEnvOrExit } from '@radd/config/env';
+import { assignRequestIds } from '@radd/shared/node';
 
 import { createApp } from './app.factory';
 
 async function bootstrap(): Promise<void> {
   const env = loadEnvOrExit('api');
+  // Before the server starts, so Sentry's copy of each request's headers has the ID (ADR-019).
+  assignRequestIds();
   const app = await createApp(env);
   await app.listen({ port: env.API_PORT, host: '0.0.0.0' });
 }

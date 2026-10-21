@@ -17,7 +17,8 @@ export const buttonVariants = cva(
       },
       size: {
         md: 'h-11',
-        sm: 'min-h-9 h-9 px-3 text-small',
+        // Smaller text and padding only: the 44 px minimum height still applies.
+        sm: 'px-3 text-small',
         icon: 'size-11 px-0',
       },
     },

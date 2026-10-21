@@ -29,8 +29,9 @@ export function ThemeToggle({ initial }: { initial: ConsoleTheme }) {
   }
 
   return (
+    // A toggle keeps one label; aria-pressed carries the state, so "Dark mode, pressed" means on.
     <Button variant="secondary" size="sm" aria-pressed={theme === 'dark'} onClick={toggle}>
-      {t(theme === 'dark' ? 'useLight' : 'useDark')}
+      {t('darkMode')}
     </Button>
   );
 }

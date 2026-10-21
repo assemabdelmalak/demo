@@ -7,6 +7,7 @@ import { type ReactNode } from 'react';
 import { ApiProvider } from '@radd/api-client/react';
 import { loadPublicEnv } from '@radd/config/env';
 import { dirFor, type UiLocale } from '@radd/shared/i18n';
+import { DirectionProvider } from '@radd/ui';
 
 import { PublicEnvScript } from '@/components/public-env-script';
 
@@ -50,7 +51,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body className="min-h-dvh antialiased">
         <PublicEnvScript env={env} />
         <NextIntlClientProvider>
-          <ApiProvider baseUrl={env.NEXT_PUBLIC_API_URL}>{children}</ApiProvider>
+          <ApiProvider baseUrl={env.NEXT_PUBLIC_API_URL}>
+            <DirectionProvider dir={dirFor(locale)}>{children}</DirectionProvider>
+          </ApiProvider>
         </NextIntlClientProvider>
       </body>
     </html>

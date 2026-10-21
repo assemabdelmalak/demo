@@ -5,7 +5,7 @@ import { type ComponentProps } from 'react';
 
 import { cn } from '../lib/cn.js';
 
-// Radix reads `dir` from the document, so arrow-key navigation follows RTL automatically.
+// Direction comes from DirectionProvider in the root layout; arrow keys then follow RTL.
 export const Tabs = TabsPrimitive.Root;
 
 export function TabsList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {

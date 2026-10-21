@@ -51,6 +51,15 @@ test.describe('diner home @smoke', () => {
     await expectAccessible();
   });
 
+  test('every control is a 44 px tap target at 360 px (UX §9)', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page.goto('/');
+    for (const control of await page.locator('button, a, [role=tab]').all()) {
+      const box = await control.boundingBox();
+      expect(box?.height, (await control.textContent()) ?? '').toBeGreaterThanOrEqual(44);
+    }
+  });
+
   test('tags every response with a request ID', async ({ request }) => {
     await expectRequestIds(request);
   });

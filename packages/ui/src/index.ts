@@ -25,6 +25,7 @@ export { ThemeProvider, type ThemeProviderProps } from './theme/theme-provider.j
 export { Avatar, initials, type AvatarProps } from './components/avatar.js';
 export { Button, buttonVariants, type ButtonProps } from './components/button.js';
 export { Chip, type ChipProps } from './components/chip.js';
+export { DirectionProvider } from './components/direction-provider.js';
 export { Price, type PriceProps } from './components/price.js';
 export {
   Sheet,

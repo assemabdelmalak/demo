@@ -13,23 +13,44 @@ test.describe('console home @smoke', () => {
     await page.getByRole('button', { name: 'العربية' }).click();
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await expect(page.getByText('لوحة التحكم')).toBeVisible();
+
+    // Radix widgets follow the page direction: laid out right to left, and the "next" arrow key
+    // in RTL is ArrowLeft.
+    const tabs = page.getByRole('tablist', { name: 'الأقسام' });
+    await expect(tabs).toHaveCSS('direction', 'rtl');
+    await page.getByRole('tab', { name: 'القائمة' }).focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.getByRole('tab', { name: 'الصالة مباشرة' })).toBeFocused();
   });
 
   test('the dark-mode switch changes the tokens and survives a reload', async ({ page }) => {
     await page.goto('/');
     const html = page.locator('html');
+    // One fixed label; the pressed state says whether dark mode is on.
+    const toggle = page.getByRole('button', { name: 'Dark mode' });
     const background = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     await expect(html).toHaveAttribute('data-theme', 'light');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     const light = await background();
 
-    await page.getByRole('button', { name: 'Dark mode' }).click();
+    await toggle.click();
     await expect(html).toHaveAttribute('data-theme', 'dark');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
     expect(await background()).not.toBe(light);
 
     await page.reload();
     await expect(html).toHaveAttribute('data-theme', 'dark');
-    await page.getByRole('button', { name: 'Light mode' }).click();
+    await toggle.click();
     await expect(html).toHaveAttribute('data-theme', 'light');
+  });
+
+  test('every control is a 44 px tap target at 360 px (UX §9)', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page.goto('/');
+    for (const control of await page.locator('button, [role=tab]').all()) {
+      const box = await control.boundingBox();
+      expect(box?.height, (await control.textContent()) ?? '').toBeGreaterThanOrEqual(44);
+    }
   });
 
   for (const [locale, theme] of [

@@ -13,8 +13,7 @@
     "cta": "Publish menu"
   },
   "theme": {
-    "useDark": "Dark mode",
-    "useLight": "Light mode"
+    "darkMode": "Dark mode"
   },
   "language": {
     "label": "Language",
