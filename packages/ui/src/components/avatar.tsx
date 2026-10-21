@@ -4,6 +4,7 @@ import { Avatar as AvatarPrimitive } from 'radix-ui';
 import { type ComponentProps } from 'react';
 
 import { cn } from '../lib/cn.js';
+import { isHexColor, readableOn } from '../lib/contrast.js';
 
 export interface AvatarProps extends ComponentProps<typeof AvatarPrimitive.Root> {
   /** Display name; its initials are the fallback. */
@@ -23,19 +24,24 @@ export function initials(name: string): string {
 }
 
 export function Avatar({ name, src, color, className, ...props }: AvatarProps) {
+  // Participant colours range from yellow to navy, so the initials take whichever of black or white
+  // reads better (AA); the default muted background takes white.
+  const background = color ?? 'var(--muted)';
+  const foreground = color && isHexColor(color) ? readableOn(color) : '#ffffff';
   return (
+    // One accessible name for the whole avatar, whether the photo or the initials show.
     <AvatarPrimitive.Root
       data-slot="avatar"
+      role="img"
+      aria-label={name}
       className={cn('relative inline-flex size-9 shrink-0 overflow-hidden rounded-full', className)}
       {...props}
     >
-      {src ? (
-        <AvatarPrimitive.Image src={src} alt={name} className="size-full object-cover" />
-      ) : null}
+      {src ? <AvatarPrimitive.Image src={src} alt="" className="size-full object-cover" /> : null}
       <AvatarPrimitive.Fallback
-        aria-label={name}
-        className="flex size-full items-center justify-center text-small font-semibold text-white"
-        style={{ backgroundColor: color ?? 'var(--muted)' }}
+        aria-hidden="true"
+        className="flex size-full items-center justify-center text-small font-semibold"
+        style={{ backgroundColor: background, color: foreground }}
       >
         {initials(name)}
       </AvatarPrimitive.Fallback>

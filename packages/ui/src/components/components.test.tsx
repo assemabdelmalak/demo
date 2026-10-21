@@ -1,11 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { initials } from './avatar.js';
-import { Button } from './button.js';
+import { Avatar, initials } from './avatar.js';
+import { Button, buttonVariants } from './button.js';
 import { Chip } from './chip.js';
 import { Price } from './price.js';
 import { Skeleton } from './skeleton.js';
+import { cn } from '../lib/cn.js';
+import { AA_TEXT, contrastRatio, readableOn } from '../lib/contrast.js';
+import { PARTICIPANT_PALETTE } from '../theme/presets.js';
 
 describe('Price', () => {
   it('isolates both amounts with <bdi> so digits stay in order inside RTL text', () => {
@@ -58,5 +61,34 @@ describe('initials', () => {
     expect(initials('Rami Haddad')).toBe('RH');
     expect(initials('nour')).toBe('N');
     expect(initials('  سارة   خوري ')).toBe('سخ');
+  });
+});
+
+describe('cn with the design tokens', () => {
+  it('keeps both a custom text size and a text colour', () => {
+    const small = cn(buttonVariants({ size: 'sm' }));
+    expect(small).toContain('text-small');
+    expect(small).toContain('text-on-primary');
+    expect(cn(buttonVariants({ variant: 'danger', size: 'sm' }))).toContain('text-white');
+    expect(cn(buttonVariants())).toContain('text-body');
+  });
+
+  it('still lets a later size or radius win', () => {
+    expect(cn('text-small', 'text-body')).toBe('text-body');
+    expect(cn('rounded-button', 'rounded-chip')).toBe('rounded-chip');
+  });
+});
+
+describe('Avatar', () => {
+  it('names the avatar once and hides the initials from assistive technology', () => {
+    const html = renderToStaticMarkup(<Avatar name="Rania Haddad" />);
+    expect(html).toContain('role="img"');
+    expect(html).toContain('aria-label="Rania Haddad"');
+  });
+
+  it('gives initials AA contrast on every participant colour', () => {
+    for (const color of PARTICIPANT_PALETTE) {
+      expect(contrastRatio(color, readableOn(color)), color).toBeGreaterThanOrEqual(AA_TEXT);
+    }
   });
 });
