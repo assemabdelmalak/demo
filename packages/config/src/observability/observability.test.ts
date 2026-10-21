@@ -4,6 +4,7 @@ import {
   scrubBreadcrumb,
   scrubEvent,
   scrubSpan,
+  requestSampler,
   sentryOptions,
   traceContextScrubbing,
 } from './index.js';
@@ -268,21 +269,33 @@ describe('sentryOptions', () => {
     });
   });
 
-  it('propagates traces to no third party unless a target is listed', () => {
+  it('sends trace headers to no other service', () => {
     expect(sentryOptions(base).tracePropagationTargets).toEqual([]);
-    expect(
-      sentryOptions({ ...base, tracePropagationTargets: ['http://localhost:4000'] })
-        .tracePropagationTargets,
-    ).toEqual(['http://localhost:4000']);
   });
+});
 
-  it('decides sampling locally as all or nothing', () => {
+describe('requestSampler', () => {
+  it('decides locally, all or nothing', () => {
     const random = vi.spyOn(Math, 'random');
     random.mockReturnValue(0.1);
-    expect(sentryOptions(base).tracesSampler()).toBe(0);
-    expect(sentryOptions({ ...base, tracesSampleRate: 0.2 }).tracesSampler()).toBe(1);
+    expect(requestSampler(0)({})).toBe(0);
+    expect(requestSampler(0.2)({})).toBe(1);
     random.mockReturnValue(0.3);
-    expect(sentryOptions({ ...base, tracesSampleRate: 0.2 }).tracesSampler()).toBe(0);
-    expect(sentryOptions({ ...base, tracesSampleRate: 1 }).tracesSampler()).toBe(1);
+    expect(requestSampler(0.2)({})).toBe(0);
+    expect(requestSampler(1)({})).toBe(1);
+  });
+
+  it('makes one decision per request, shared by all its root spans', () => {
+    const random = vi.spyOn(Math, 'random');
+    const sampler = requestSampler(0.5);
+    const first = {};
+    const second = {};
+    random.mockReturnValue(0.1);
+    expect(sampler({ normalizedRequest: first })).toBe(1);
+    random.mockReturnValue(0.9);
+    expect(sampler({ normalizedRequest: first })).toBe(1);
+    expect(sampler({ normalizedRequest: second })).toBe(0);
+    random.mockReturnValue(0.1);
+    expect(sampler({ normalizedRequest: second })).toBe(0);
   });
 });

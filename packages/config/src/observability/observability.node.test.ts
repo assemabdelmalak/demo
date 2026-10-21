@@ -98,6 +98,35 @@ describe('Node Sentry with the shared options', () => {
     expect(lines.join('\n')).not.toContain('"type":"span"');
   });
 
+  it('keeps or drops every root span of a request together', async () => {
+    // A Next.js request has several root spans (proxy, render, …); each must not draw on its own.
+    const lines = initRecording(0.5);
+    server = createServer((request, response) => {
+      Sentry.startSpan({ name: 'render', parentSpan: null }, () => undefined);
+      Sentry.startSpan({ name: 'proxy', parentSpan: null }, () => undefined);
+      request.resume();
+      request.on('end', () => response.end('ok'));
+    });
+    await new Promise<void>((resolve) => server?.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as AddressInfo;
+    // The test's own client calls belong to no request; only the server's spans are under test.
+    const get = () => fetch(`http://127.0.0.1:${String(port)}/`).then((res) => res.text());
+    for (let i = 0; i < 24; i++) await Sentry.suppressTracing(get);
+    await Sentry.flush(3_000);
+
+    const segmentsPerTrace = new Map<string, number>();
+    for (const line of lines) {
+      if (!line.startsWith('{"version":2')) continue;
+      const { items } = JSON.parse(line) as { items: { trace_id: string; is_segment: boolean }[] };
+      for (const span of items.filter((item) => item.is_segment)) {
+        segmentsPerTrace.set(span.trace_id, (segmentsPerTrace.get(span.trace_id) ?? 0) + 1);
+      }
+    }
+    // At 0.5, no trace kept in 24 requests has odds of 1 in 16 million.
+    expect(segmentsPerTrace.size).toBeGreaterThan(0);
+    expect([...segmentsPerTrace.values()].every((count) => count === 3)).toBe(true);
+  });
+
   it('keeps that decision local at a non-zero rate too', async () => {
     // Our draw says "not this one"; the forged baggage says "always".
     vi.spyOn(Math, 'random').mockReturnValue(0.99);

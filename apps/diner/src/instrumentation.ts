@@ -18,7 +18,6 @@ export async function register(): Promise<void> {
         release: env.GIT_SHA,
         environment: env.APP_ENV,
         tracesSampleRate: env.SENTRY_TRACES_SAMPLE_RATE,
-        tracePropagationTargets: [env.API_PUBLIC_URL],
       }),
     );
   }

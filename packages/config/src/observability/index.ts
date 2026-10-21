@@ -201,12 +201,28 @@ export interface SentryRuntimeOptions {
   environment: string;
   /** Server-side performance traces (SENTRY_TRACES_SAMPLE_RATE); browsers pass 0. */
   tracesSampleRate?: number;
-  /**
-   * Outgoing requests that may carry `sentry-trace`/`baggage` headers. Node SDKs add them to
-   * every request by default; third parties (Anthropic, S3, Resend) get none, so only the Next
-   * servers list the API here.
-   */
-  tracePropagationTargets?: string[];
+}
+
+/**
+ * Trace sampling decided here, never by the client. Continuing an incoming trace, the SDK honours
+ * `sentry-trace: …-1` and compares a rate against the random number in the client's `baggage`, so
+ * returning a rate would let any client trace (and spend the span quota on) all its requests.
+ * Returning only 0 or 1 makes both irrelevant. One draw per incoming request, shared by all its
+ * root spans (a Next.js request has several), keeps each request's trace whole; work outside a
+ * request, such as a worker job, draws per root span. Kept spans report a sample rate of 1, so
+ * percentiles are right but throughput counts are not extrapolated.
+ */
+export function requestSampler(rate: number) {
+  const decisions = new WeakMap<object, boolean>();
+  return ({ normalizedRequest }: { normalizedRequest?: object }): 0 | 1 => {
+    if (normalizedRequest === undefined) return Math.random() < rate ? 1 : 0;
+    let keep = decisions.get(normalizedRequest);
+    if (keep === undefined) {
+      keep = Math.random() < rate;
+      decisions.set(normalizedRequest, keep);
+    }
+    return keep ? 1 : 0;
+  };
 }
 
 /**
@@ -218,7 +234,6 @@ export function sentryOptions({
   release,
   environment,
   tracesSampleRate = 0,
-  tracePropagationTargets = [],
 }: SentryRuntimeOptions) {
   return {
     dsn,
@@ -226,13 +241,11 @@ export function sentryOptions({
     release,
     environment,
     dataCollection: DATA_COLLECTION,
-    // Decided here, never by the client. When a request continues an incoming trace, the SDK
-    // honours `sentry-trace: …-1` and compares a rate against the random number in the client's
-    // `baggage`, so any client could trace (and spend the span quota on) all its requests.
-    // Returning only 0 or 1 makes both irrelevant. Kept spans therefore report a sample rate of 1:
-    // percentiles are right, throughput counts are not extrapolated.
-    tracesSampler: () => (Math.random() < tracesSampleRate ? 1 : 0),
-    tracePropagationTargets,
+    tracesSampler: requestSampler(tracesSampleRate),
+    // No service sends `sentry-trace`/`baggage` to another: the API cannot tell our Next servers
+    // from a client forging them, and third parties (Anthropic, S3, Resend) must get none. A page
+    // request and the API calls it makes share the `x-request-id` kept on their spans and events.
+    tracePropagationTargets: [],
     integrations: [traceContextScrubbing()],
     beforeSend: scrubEvent,
     beforeSendSpan: scrubSpan,
