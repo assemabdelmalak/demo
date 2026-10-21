@@ -39,7 +39,7 @@ const withIntl = createNextIntlPlugin('./src/i18n/request.ts');
 // releases are created at deploy time, not here (DEPLOYMENT §5).
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 
-export default withSentryConfig(withIntl(config), {
+const sentryConfig = withSentryConfig(withIntl(config), {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: sentryAuthToken,
@@ -58,3 +58,12 @@ export default withSentryConfig(withIntl(config), {
   // Browsers report errors only, so navigations are not traced (ADR-019).
   suppressOnRouterTransitionStartWarning: true,
 });
+
+// withSentryConfig always renders `sentry-trace`/`baggage` meta tags into every page. They reveal
+// whether the request was traced, and that decision is a fixed function of the request ID, so a
+// client could find an ID that is always traced and reuse it. Browsers never trace (ADR-019), so
+// the tags are switched off; this must stay after withSentryConfig, which adds them unconditionally.
+export default {
+  ...sentryConfig,
+  experimental: { ...sentryConfig.experimental, clientTraceMetadata: [] },
+} satisfies NextConfig;
