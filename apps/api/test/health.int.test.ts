@@ -23,6 +23,7 @@ const PRODUCTION_SECRETS = Object.fromEntries(
     'RECEIPT_TOKEN_SECRET',
     'DINER_REVALIDATE_SECRET',
     'ACTOR_HASH_SECRET',
+    'TRACE_SAMPLING_SECRET',
   ].map((key) => [key, REAL_SECRET]),
 );
 

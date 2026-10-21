@@ -95,7 +95,17 @@ const API_SECRET_KEYS = [
   'RECEIPT_TOKEN_SECRET',
   'DINER_REVALIDATE_SECRET',
   'ACTOR_HASH_SECRET',
+  'TRACE_SAMPLING_SECRET',
 ] as const;
+
+/**
+ * Shared by the API and both Next servers: keys the hash of a request ID that decides whether the
+ * request is traced, so every service that sees the ID agrees and a client cannot predict it
+ * (ADR-019).
+ */
+const tracing = {
+  TRACE_SAMPLING_SECRET: requiredString,
+};
 
 export const apiEnvSchema = z
   .object({
@@ -133,6 +143,7 @@ export const apiEnvSchema = z
     DINER_REVALIDATE_SECRET: requiredString,
     SUPER_ADMIN_EMAILS: csv(z.email()),
     SENTRY_DSN_API: optionalUrl,
+    ...tracing,
     CLOUDFLARE_API_TOKEN: optionalString,
     CLOUDFLARE_ZONE_ID: optionalString,
   })
@@ -177,14 +188,18 @@ export const dinerEnvSchema = z
     ...publicUrls,
     ...dinerPublicEnvSchema.shape,
     DINER_REVALIDATE_SECRET: requiredString,
+    ...tracing,
   })
-  .superRefine(refineSecrets(['DINER_REVALIDATE_SECRET']));
+  .superRefine(refineSecrets(['DINER_REVALIDATE_SECRET', 'TRACE_SAMPLING_SECRET']));
 
-export const consoleEnvSchema = z.object({
-  ...common,
-  ...publicUrls,
-  ...consolePublicEnvSchema.shape,
-});
+export const consoleEnvSchema = z
+  .object({
+    ...common,
+    ...publicUrls,
+    ...consolePublicEnvSchema.shape,
+    ...tracing,
+  })
+  .superRefine(refineSecrets(['TRACE_SAMPLING_SECRET']));
 
 export const envSchemas = {
   api: apiEnvSchema,

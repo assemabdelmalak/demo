@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { subscribe } from 'node:diagnostics_channel';
 import { type IncomingMessage } from 'node:http';
 
@@ -19,4 +20,16 @@ export function assignRequestIds(): void {
     const { request } = message as { request: IncomingMessage };
     request.headers[REQUEST_ID_HEADER] = normalizeRequestId(request.headers[REQUEST_ID_HEADER]);
   });
+}
+
+/**
+ * Whether to trace a request, decided from its ID: every service that sees the same
+ * `x-request-id` (a Next server and the API calls it forwards it on) gets the same answer, so a
+ * kept page trace has its API spans too. The hash is keyed with a server secret, so a client that
+ * picks its own IDs cannot predict or force the outcome (ADR-019).
+ */
+export function requestIdSampler(secret: string, rate: number): (requestId: string) => boolean {
+  const threshold = rate * 2 ** 32;
+  return (requestId) =>
+    createHmac('sha256', secret).update(requestId).digest().readUInt32BE(0) < threshold;
 }

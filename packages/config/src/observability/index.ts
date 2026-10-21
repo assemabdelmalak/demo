@@ -201,24 +201,35 @@ export interface SentryRuntimeOptions {
   environment: string;
   /** Server-side performance traces (SENTRY_TRACES_SAMPLE_RATE); browsers pass 0. */
   tracesSampleRate?: number;
+  /** Servers: decides from the request ID (`requestIdSampler` in `@radd/shared/node`). */
+  keepRequestId?: (requestId: string) => boolean;
+}
+
+/** The part of the SDK's per-request data the sampler reads; headers already carry the request ID. */
+interface SampledRequest {
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 /**
  * Trace sampling decided here, never by the client. Continuing an incoming trace, the SDK honours
  * `sentry-trace: …-1` and compares a rate against the random number in the client's `baggage`, so
  * returning a rate would let any client trace (and spend the span quota on) all its requests.
- * Returning only 0 or 1 makes both irrelevant. One draw per incoming request, shared by all its
- * root spans (a Next.js request has several), keeps each request's trace whole; work outside a
- * request, such as a worker job, draws per root span. Kept spans report a sample rate of 1, so
- * percentiles are right but throughput counts are not extrapolated.
+ * Returning only 0 or 1 makes both irrelevant. One decision per incoming request, shared by all
+ * its root spans (a Next.js request has several), keeps each request's trace whole. With
+ * `keepRequestId` the decision comes from the request ID, so the Next servers and the API agree
+ * on the same request; otherwise, and for work outside a request such as a worker job, it is a
+ * local draw. Kept spans report a sample rate of 1, so percentiles are right but throughput counts
+ * are not extrapolated.
  */
-export function requestSampler(rate: number) {
+export function requestSampler(rate: number, keepRequestId?: (requestId: string) => boolean) {
   const decisions = new WeakMap<object, boolean>();
-  return ({ normalizedRequest }: { normalizedRequest?: object }): 0 | 1 => {
-    if (normalizedRequest === undefined) return Math.random() < rate ? 1 : 0;
+  const draw = () => Math.random() < rate;
+  return ({ normalizedRequest }: { normalizedRequest?: SampledRequest }): 0 | 1 => {
+    if (normalizedRequest === undefined) return draw() ? 1 : 0;
     let keep = decisions.get(normalizedRequest);
     if (keep === undefined) {
-      keep = Math.random() < rate;
+      const requestId = normalizedRequest.headers?.['x-request-id'];
+      keep = keepRequestId && typeof requestId === 'string' ? keepRequestId(requestId) : draw();
       decisions.set(normalizedRequest, keep);
     }
     return keep ? 1 : 0;
@@ -234,6 +245,7 @@ export function sentryOptions({
   release,
   environment,
   tracesSampleRate = 0,
+  keepRequestId,
 }: SentryRuntimeOptions) {
   return {
     dsn,
@@ -241,7 +253,7 @@ export function sentryOptions({
     release,
     environment,
     dataCollection: DATA_COLLECTION,
-    tracesSampler: requestSampler(tracesSampleRate),
+    tracesSampler: requestSampler(tracesSampleRate, keepRequestId),
     // No service sends `sentry-trace`/`baggage` to another: the API cannot tell our Next servers
     // from a client forging them, and third parties (Anthropic, S3, Resend) must get none. A page
     // request and the API calls it makes share the `x-request-id` kept on their spans and events.

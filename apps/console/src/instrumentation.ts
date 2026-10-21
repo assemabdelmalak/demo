@@ -9,7 +9,7 @@ import { type Instrumentation } from 'next';
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
   // Before any request is handled, so Sentry's copy of the headers already has the ID (ADR-019).
-  const { assignRequestIds } = await import('@radd/shared/node');
+  const { assignRequestIds, requestIdSampler } = await import('@radd/shared/node');
   assignRequestIds();
   const { loadEnvOrExit } = await import('@radd/config/env');
   const { sentryOptions } = await import('@radd/config/observability');
@@ -21,6 +21,7 @@ export async function register(): Promise<void> {
         release: env.GIT_SHA,
         environment: env.APP_ENV,
         tracesSampleRate: env.SENTRY_TRACES_SAMPLE_RATE,
+        keepRequestId: requestIdSampler(env.TRACE_SAMPLING_SECRET, env.SENTRY_TRACES_SAMPLE_RATE),
       }),
     );
   }

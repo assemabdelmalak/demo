@@ -285,6 +285,19 @@ describe('requestSampler', () => {
     expect(requestSampler(1)({})).toBe(1);
   });
 
+  it('decides from the request ID when the service can', () => {
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const sampler = requestSampler(0.5, (id) => id === 'kept-id');
+    expect(sampler({ normalizedRequest: { headers: { 'x-request-id': 'kept-id' } } })).toBe(1);
+    expect(sampler({ normalizedRequest: { headers: { 'x-request-id': 'other-id' } } })).toBe(0);
+    random.mockReturnValue(0.01);
+    // No ID (or no keyed hash): a local draw.
+    expect(sampler({ normalizedRequest: { headers: {} } })).toBe(1);
+    expect(
+      requestSampler(0.5)({ normalizedRequest: { headers: { 'x-request-id': 'other-id' } } }),
+    ).toBe(1);
+  });
+
   it('makes one decision per request, shared by all its root spans', () => {
     const random = vi.spyOn(Math, 'random');
     const sampler = requestSampler(0.5);

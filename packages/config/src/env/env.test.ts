@@ -133,6 +133,7 @@ describe('secrets outside local development', () => {
     'RECEIPT_TOKEN_SECRET',
     'DINER_REVALIDATE_SECRET',
     'ACTOR_HASH_SECRET',
+    'TRACE_SAMPLING_SECRET',
   ];
 
   it.each(['staging', 'production'])('rejects the change-me placeholders in %s', (appEnv) => {
@@ -145,9 +146,16 @@ describe('secrets outside local development', () => {
       ...example,
       APP_ENV: 'production',
       DINER_REVALIDATE_SECRET: 'hunter2-hunter2',
+      TRACE_SAMPLING_SECRET: REAL_SECRET,
     });
     expect(issues).toHaveLength(1);
     expect(JSON.stringify(issues)).not.toContain('hunter2');
+  });
+
+  it('holds the console to the same rule for its one secret', () => {
+    expect(issuesFor('console', { ...example, APP_ENV: 'production' })).toEqual([
+      expect.objectContaining({ key: 'TRACE_SAMPLING_SECRET' }),
+    ]);
   });
 
   it('accepts long random secrets in production', () => {

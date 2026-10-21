@@ -11,13 +11,17 @@ import { sentryOptions } from './index.js';
  * options and a transport that records every envelope line. Spans skip beforeSend, so this is
  * where request bodies, client IPs and cookies would leak if data collection were left on.
  */
-function initRecording(tracesSampleRate: number): string[] {
+function initRecording(
+  tracesSampleRate: number,
+  keepRequestId?: (requestId: string) => boolean,
+): string[] {
   const lines: string[] = [];
   const options = sentryOptions({
     dsn: 'https://public@o0.ingest.sentry.io/1',
     release: 'abc1234',
     environment: 'test',
     tracesSampleRate,
+    ...(keepRequestId ? { keepRequestId } : {}),
   });
   Sentry.init({
     ...options,
@@ -125,6 +129,15 @@ describe('Node Sentry with the shared options', () => {
     // At 0.5, no trace kept in 24 requests has odds of 1 in 16 million.
     expect(segmentsPerTrace.size).toBeGreaterThan(0);
     expect([...segmentsPerTrace.values()].every((count) => count === 3)).toBe(true);
+  });
+
+  it('lets the request ID decide, so services that share it agree', async () => {
+    // Our local draw would drop everything; the keyed decision for this ID says keep.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const keptId = '0199f2a4-5b6c-7d8e-9f01-23456789abcd';
+    const lines = initRecording(0.5, (id) => id === keptId);
+    await postSignIn({ 'x-request-id': keptId });
+    expect(lines.join('\n')).toContain('"type":"span"');
   });
 
   it('keeps that decision local at a non-zero rate too', async () => {
