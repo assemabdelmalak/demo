@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Nightly (TESTING §6.9): dependency audit and the full suites against a fresh install.
+    - cron: '17 1 * * *'
+
+permissions:
+  contents: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  NEXT_TELEMETRY_DISABLED: 1
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Pushes and pull requests both run every job. A job skipped with `if:` reports success under its
+# name, so a skipped pull_request twin could satisfy a required check that the push run failed.
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm lint
+      - run: pnpm format:check
+      - name: i18n catalogues in sync (en ↔ ar)
+        run: node scripts/check-i18n.mjs
+      - name: Paid AI calls confined to eval workflows
+        run: node scripts/check-ci-guards.mjs
+
+  typecheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm typecheck
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm test
+
+  test-int:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Integration tests (Testcontainers)
+        run: pnpm test:int
+
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # Every server-only secret carries a sentinel; none may appear in client bundles (P0-T02).
+      BETTER_AUTH_SECRET: RADD_SECRET_SENTINEL_better_auth
+      PARTICIPANT_TOKEN_SECRET: RADD_SECRET_SENTINEL_participant
+      DEVICE_COOKIE_SECRET: RADD_SECRET_SENTINEL_device
+      RECEIPT_TOKEN_SECRET: RADD_SECRET_SENTINEL_receipt
+      DINER_REVALIDATE_SECRET: RADD_SECRET_SENTINEL_revalidate
+      ACTOR_HASH_SECRET: RADD_SECRET_SENTINEL_actor
+      TRACE_SAMPLING_SECRET: RADD_SECRET_SENTINEL_trace_sampling
+      S3_SECRET_ACCESS_KEY: RADD_SECRET_SENTINEL_s3
+      DATABASE_URL: postgres://u:RADD_SECRET_SENTINEL_db@localhost:5432/radd
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Build every app and package (secrets visible to the build)
+        run: pnpm turbo run build --env-mode=loose
+      - name: No secrets in client bundles
+        run: node scripts/check-client-bundles.mjs RADD_SECRET_SENTINEL
+
+  openapi-drift:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Regenerate the OpenAPI document and client types
+        run: pnpm openapi
+      - name: Fail if they differ from what is committed
+        run: git diff --exit-code -- packages/api-client
+
+  infra-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Start local infrastructure (pnpm dev:infra)
+        run: docker compose -f infra/docker-compose.dev.yml up -d --wait --wait-timeout 180
+      - name: Check every service
+        run: infra/scripts/smoke-infra.sh
+      - name: Service logs
+        if: failure()
+        run: docker compose -f infra/docker-compose.dev.yml logs --no-color
+
+  e2e-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Start local infrastructure
+        run: docker compose -f infra/docker-compose.dev.yml up -d --wait --wait-timeout 180
+      - name: Use the example environment
+        run: cp .env.example .env
+      - run: pnpm build
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Start the API and worker
+        run: |
+          (cd apps/api && nohup node --enable-source-maps --env-file=../../.env dist/main.js > ../../api.log 2>&1 &)
+          (cd apps/worker && nohup node --enable-source-maps --env-file=../../.env dist/main.js > ../../worker.log 2>&1 &)
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:4000/v1/health/live > /dev/null && curl -sf http://localhost:4100/healthz > /dev/null && exit 0
+            sleep 1
+          done
+          echo "API or worker did not start"; cat api.log worker.log; exit 1
+      - name: Smoke tests (@smoke)
+        env:
+          E2E_API_URL: http://localhost:4000
+        run: pnpm test:e2e:smoke
+      - name: Upload report and logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-smoke
+          path: |
+            playwright-report/
+            test-results/
+            api.log
+            worker.log
+          retention-days: 7
+
+  secrets-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks (checksum-verified CLI; the action needs a licence for orgs)
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum --check
+          tar -xzf gitleaks.tgz gitleaks
+      - name: Scan the full history
+        run: ./gitleaks git --redact --no-banner --config .gitleaks.toml .
+
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Fail on high or critical advisories (ignored ones are justified in pnpm-workspace.yaml)
+        run: pnpm audit --audit-level=high

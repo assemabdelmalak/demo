@@ -1,0 +1,45 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 10 skips dependency install scripts unless they are listed here.
+onlyBuiltDependencies:
+  - lefthook
+ignoredBuiltDependencies:
+  # Prebuilt binaries ship as optional dependencies; their postinstall is only a fallback.
+  - '@swc/core'
+  - unrs-resolver
+  # Optional native speed-ups of the Docker client used by Testcontainers (SSH transport only).
+  - cpu-features
+  - ssh2
+  - '@parcel/watcher'
+  - msgpackr-extract
+  # Postinstall only prints a version notice.
+  - protobufjs
+  # Install-time analytics ping (pulled in by @nestjs/swagger); never run it.
+  - '@scarf/scarf'
+
+overrides:
+  # TypeScript 7 (native) has no compiler API; typescript-eslint and openapi-typescript need 5.x. See ADR-011.
+  typescript: 5.9.3
+  # @nestjs/platform-fastify 11.2.7 pins fastify 5.11.3, which has four high advisories
+  # (GHSA-667r-xxjv-c9mm, GHSA-p68q-wchp-6fh7, GHSA-hwr6-493r-vm6h, GHSA-9q9j-q6p8-xq58).
+  # 5.12.7 is a compatible 5.x patch release; drop this once Nest ships it.
+  fastify: 5.12.7
+  # @sentry/node 11 lists its bundler plugins (rollup, oxc-parser, the Sentry CLI, ~70 MB) as a
+  # dependency, but only its vite/rollup/webpack/esbuild subpaths load them; the API and worker
+  # never do. Dropping the edge keeps their images under 250 MB. @sentry/nextjs keeps its own
+  # dependency for source-map upload.
+  '@sentry/node>@sentry/bundler-plugins': '-'
+
+peerDependencyRules:
+  allowedVersions:
+    # Declares eslint <=9 but runs cleanly on ESLint 10 (checked 2026-10-20). See ADR-011.
+    eslint-plugin-jsx-a11y>eslint: '10'
+
+auditConfig:
+  ignoreGhsas:
+    # braces <=3.0.3 stack exhaustion on deeply nested glob patterns; no patched release exists.
+    # Only reached through @next/eslint-plugin-next > fast-glob at lint time, on patterns we write.
+    # Never shipped in an image. Revisit when a fix is published (Renovate will propose it).
+    - GHSA-vfj7-8cjw-p6xm

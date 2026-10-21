@@ -1,2 +1,34 @@
 *.log
 *.orig
+
+# Local secrets
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Tooling caches
+.turbo/
+coverage/
+.eslintcache
+
+# Playwright / Lighthouse
+playwright-report/
+test-results/
+blob-report/
+.lighthouseci/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

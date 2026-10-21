@@ -1,0 +1,76 @@
+# Local development infrastructure. Credentials match .env.example and are for local use only.
+# Every port binds to 127.0.0.1 so these weak passwords never reach the LAN.
+name: radd-menu
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg17-trixie
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: radd
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d radd']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  valkey:
+    image: valkey/valkey:8.1.10-alpine3.24
+    command: ['valkey-server', '--requirepass', 'valkey', '--appendonly', 'yes']
+    ports:
+      - 127.0.0.1:6379:6379
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ['CMD', 'valkey-cli', '-a', 'valkey', '--no-auth-warning', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # S3-compatible storage (stands in for Cloudflare R2). SeaweedFS replaces MinIO, whose
+  # images were withdrawn from Docker Hub in September 2026 (ADR-013).
+  s3:
+    image: chrislusf/seaweedfs:4.48
+    command:
+      - mini
+      - -dir=/data
+      - -ip=127.0.0.1
+      - -ip.bind=0.0.0.0
+      - -s3.config=/etc/seaweedfs/s3.json
+      - -s3.allowedOrigins=http://localhost:3000,http://localhost:3001
+      - -bucket=radd-assets,radd-private
+      - -master.telemetry=false
+      - -webdav=false
+    ports:
+      - 127.0.0.1:9000:8333 # S3 API (S3_ENDPOINT)
+      - 127.0.0.1:9001:23646 # admin UI: buckets and objects
+    volumes:
+      - s3-data:/data
+      - ./seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8333/healthz']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    ports:
+      - 127.0.0.1:1025:1025 # SMTP (SMTP_URL)
+      - 127.0.0.1:8025:8025 # web UI
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres-data:
+  valkey-data:
+  s3-data:

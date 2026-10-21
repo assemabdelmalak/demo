@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "title": "Radd Menu",
+    "description": "Scan the table code to see the menu and order together."
+  },
+  "home": {
+    "eyebrow": "Radd",
+    "title": "Radd Menu",
+    "tagline": "Scan to see the menu & order",
+    "sampleDish": "Fattoush",
+    "sampleDescription": "Crisp vegetables, sumac and toasted bread",
+    "sampleSecondary": "580,000 LBP",
+    "cta": "See the menu"
+  },
+  "language": {
+    "label": "Language",
+    "short": {
+      "en": "EN",
+      "ar": "ع"
+    },
+    "name": {
+      "en": "English",
+      "ar": "العربية"
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "This link doesn't lead to a menu. Scan the table code again or ask a member of staff.",
+    "home": "Go to the start"
+  }
+}
