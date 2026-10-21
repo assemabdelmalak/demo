@@ -1,13 +1,14 @@
 name: CodeQL
 
-# Static analysis for JavaScript/TypeScript (SEC §2): pull requests, the default branch and weekly.
+# Static analysis for JavaScript/TypeScript (SEC §2): pull requests, the default branch and nightly
+# (TESTING §6.9), so new queries catch code already on master.
 on:
   pull_request:
   push:
     # Branch filters cannot use expressions; both names keep this working if master is renamed (ADR-010).
     branches: [master, main]
   schedule:
-    - cron: '41 2 * * 1'
+    - cron: '41 2 * * *'
   workflow_dispatch:
 
 permissions:
