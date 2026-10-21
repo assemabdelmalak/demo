@@ -51,6 +51,29 @@ test.describe('diner home @smoke', () => {
     await expectAccessible();
   });
 
+  test('the language switch keeps keyboard focus', async ({ page }) => {
+    await page.goto('/');
+    const arabic = page.getByRole('button', { name: 'العربية' });
+    await arabic.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await page.waitForLoadState('networkidle');
+    await expect(arabic).toBeFocused();
+  });
+
+  test("unknown links get a not-found page in the diner's language", async ({
+    request,
+  }, testInfo) => {
+    const arabic = testInfo.project.name === 'mobile-ar';
+    const response = await request.get('/no-such-table', {
+      headers: arabic ? { cookie: 'NEXT_LOCALE=ar' } : {},
+    });
+    expect(response.status()).toBe(404);
+    const html = await response.text();
+    expect(html).toContain(arabic ? 'lang="ar"' : 'lang="en"');
+    expect(html).toContain(arabic ? 'الصفحة غير موجودة' : 'Page not found');
+  });
+
   test('every control is a 44 px tap target at 360 px (UX §9)', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 780 });
     await page.goto('/');

@@ -22,6 +22,7 @@ export function LanguageSwitch() {
   const [pending, startTransition] = useTransition();
 
   function choose(locale: UiLocale) {
+    if (pending) return;
     persistLocale(locale);
     startTransition(() => {
       router.refresh();
@@ -40,7 +41,8 @@ export function LanguageSwitch() {
           type="button"
           lang={locale}
           aria-pressed={current === locale}
-          disabled={pending}
+          // Not `disabled`: disabling the focused button would drop keyboard focus to <body>.
+          aria-disabled={pending}
           onClick={() => {
             choose(locale);
           }}

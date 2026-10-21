@@ -14,7 +14,18 @@
   },
   "language": {
     "label": "Language",
-    "short": { "en": "EN", "ar": "ع" },
-    "name": { "en": "English", "ar": "العربية" }
+    "short": {
+      "en": "EN",
+      "ar": "ع"
+    },
+    "name": {
+      "en": "English",
+      "ar": "العربية"
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "This link doesn't lead to a menu. Scan the table code again or ask a member of staff.",
+    "home": "Go to the start"
   }
 }

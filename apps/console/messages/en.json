@@ -7,9 +7,16 @@
     "title": "Radd Menu",
     "subtitle": "Console",
     "sectionsLabel": "Sections",
-    "tabs": { "menu": "Menu", "live": "Live floor", "insights": "Insights" },
+    "tabs": {
+      "menu": "Menu",
+      "live": "Live floor",
+      "insights": "Insights"
+    },
     "placeholder": "Sign-in and the owner, staff and kitchen screens arrive in the next phases.",
-    "chips": { "vegan": "Vegan", "spicy": "Spicy" },
+    "chips": {
+      "vegan": "Vegan",
+      "spicy": "Spicy"
+    },
     "cta": "Publish menu"
   },
   "theme": {
@@ -17,7 +24,18 @@
   },
   "language": {
     "label": "Language",
-    "short": { "en": "EN", "ar": "ع" },
-    "name": { "en": "English", "ar": "العربية" }
+    "short": {
+      "en": "EN",
+      "ar": "ع"
+    },
+    "name": {
+      "en": "English",
+      "ar": "العربية"
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "This page doesn't exist or has moved.",
+    "home": "Back to the console"
   }
 }
