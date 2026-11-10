@@ -4,6 +4,7 @@ import { Dialog as SheetPrimitive } from 'radix-ui';
 import { type ComponentProps } from 'react';
 
 import { cn } from '../lib/cn.js';
+import { useThemeScopeProps } from '../theme/theme-scope.js';
 
 export const Sheet = SheetPrimitive.Root;
 export const SheetTrigger = SheetPrimitive.Trigger;
@@ -26,9 +27,12 @@ export interface SheetContentProps extends ComponentProps<typeof SheetPrimitive.
 export function SheetContent({
   side = 'bottom',
   className,
+  style,
   children,
   ...props
 }: SheetContentProps) {
+  // The portal mounts under <body>, outside the ThemeProvider's element.
+  const theme = useThemeScopeProps();
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay
@@ -42,6 +46,8 @@ export function SheetContent({
           SIDE_CLASSES[side],
           className,
         )}
+        {...theme}
+        style={{ ...theme?.style, ...style }}
         {...props}
       >
         {children}
