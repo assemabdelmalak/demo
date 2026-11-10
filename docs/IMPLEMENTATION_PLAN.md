@@ -151,7 +151,7 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
 - gitleaks;
 - `pnpm audit --audit-level=high`;
 - CodeQL workflow;
-- Docker build for each app (multi-stage, non-root, per DEP §2), pushed to GHCR on `main`.
+- Docker build for each app (multi-stage, non-root, per DEP §2), pushed to GHCR on the default branch (`master`, ADR-010).
 
 **Accept:** CI is green on the PR. Images are pushed on merge, tagged `sha-xxxx` and `staging`.
 

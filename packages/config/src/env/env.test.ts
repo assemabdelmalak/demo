@@ -56,7 +56,7 @@ describe('.env.example', () => {
 
   it('has no variable that no app reads (no drift)', () => {
     const read = new Set(apps.flatMap(schemaKeys));
-    // Read by docker compose, not by the apps.
+    // Read by tooling that lands later (migrations in P1, AI evals in P7), not by the apps.
     const infraOnly = new Set(['DATABASE_URL_MIGRATOR', 'EVAL_BUDGET_USD']);
     const unread = Object.keys(example).filter((key) => !read.has(key) && !infraOnly.has(key));
     expect(unread).toEqual([]);

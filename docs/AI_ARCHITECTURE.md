@@ -459,7 +459,7 @@ Flag outliers. Retry once with the fallback model when parsing fails, or when av
 
 **CI:**
 - Required on PRs that touch `packages/ai/**`, `apps/api/src/chat/**` or the seed menu, using a GitHub secret.
-- Runs nightly on `main`.
+- Runs nightly on the default branch (`master`, ADR-010).
 
 ## B10. Search normaliser (shared by the tools, diner search and import merge)
 

@@ -69,7 +69,7 @@ Format: `ADR-NNN — Title · Date · Status`, then Context, Decision, Consequen
 ## ADR-010 — The default branch is `master` · 2026-10-20 · Accepted
 
 - **Context.** The specs say "PR to `main`" and "push images on `main`", but this repository's default branch is `master`. The owner chose to keep it.
-- **Decision.** Phase PRs target the default branch. Workflows never hard-code a branch name: image pushes and deploy steps run when `github.ref` equals `refs/heads/<default branch>`.
+- **Decision.** Phase PRs target the default branch. Workflow logic never hard-codes a branch name: image pushes and deploy steps run when `github.ref` equals `refs/heads/<default branch>`. The one exception is CodeQL's `push` trigger, where GitHub allows no expression, so it lists both `master` and `main`.
 - **Consequences.** Renaming `master` to `main` later needs no code change. Docs now say "default branch (`master`)".
 
 ## ADR-011 — Toolchain pins and module format · 2026-10-20 · Accepted
@@ -84,8 +84,8 @@ Format: `ADR-NNN — Title · Date · Status`, then Context, Decision, Consequen
 ## ADR-012 — Next.js apps read public config at runtime · 2026-10-20 · Accepted
 
 - **Context.** Next.js inlines `process.env.NEXT_PUBLIC_*` into bundles at build time. DEPLOYMENT promotes one image from staging to production by retagging, so build-time inlining would point production at staging URLs.
-- **Decision.** The Next servers parse the browser-safe schema (`@radd/config/env` `loadPublicEnv`) at request time and pass the object to client components through a provider. Client code never reads `process.env`. The `NEXT_PUBLIC_` prefix now only marks a variable as safe to expose. Server-only variables are validated at server start (`instrumentation.ts`), not during `next build`, so images build without secrets.
-- **Consequences.** One image per app serves every environment. Pages that render the provider are dynamic; P3 revisits caching for diner menu routes. CI greps the client bundles for sentinel secret values (P0-T08).
+- **Decision.** The Next servers parse the browser-safe schema (`@radd/config/env` `loadPublicEnv`) at request time and render the object into the page as a JSON `<script id="radd-public-env">`, which client code reads with `readPublicEnv()`. Client code never reads `process.env`. The `NEXT_PUBLIC_` prefix now only marks a variable as safe to expose. The public schemas also carry `APP_ENV` and `GIT_SHA`, which are not secrets: the browser Sentry setup needs them for environment and release. Server-only variables are validated at server start (`instrumentation.ts`), not during `next build`, so images build without secrets.
+- **Consequences.** One image per app serves every environment. Pages that render the script are dynamic; P3 revisits caching for diner menu routes. CI greps the client bundles for sentinel secret values (P0-T08).
 
 ## ADR-013 — SeaweedFS replaces MinIO for local S3 · 2026-10-20 · Accepted
 
@@ -158,3 +158,9 @@ Format: `ADR-NNN — Title · Date · Status`, then Context, Decision, Consequen
   - Request IDs: the Next servers and the API give every request its `x-request-id` (a valid incoming UUID, else a fresh UUIDv7) the moment Node starts handling it (`assignRequestIds` in `@radd/shared/node`), before Sentry copies the headers, so spans and events carry it. `proxy.ts` keeps it and sets it on the response, and `serverApiClient()` forwards it to the API, which keeps it too.
   - The API and worker exit when start-up fails. With Sentry initialised, its unhandled-rejection handler would otherwise log the failure and leave a process with no listener.
 - **Consequences.** Sentry issues carry no user context, so they cannot be grouped by diner. Browser errors thrown before the SDK chunk loads are missed. A new route or URL that carries a secret in its path must add a pattern to `@radd/config/logging`, which logs and Sentry share. SDK upgrades can change what an option means without a type error, so the real-SDK tests in `@radd/config` (browser event and session, a traced HTTP request) must pass before a Sentry upgrade merges.
+
+## ADR-020 — shadcn/ui components are hand-adapted for now · 2026-11-10 · Accepted
+
+- **Context.** P0-T06 asks for shadcn/ui "initialised in the package". The shadcn registry (`ui.shadcn.com`) is blocked by the agent environment's network policy, so `shadcn init` and `shadcn add` cannot run. The Phase 0 acceptance audit also found that `packages/ui/components.json` does not describe a working setup: its aliases (`@radd/ui/components`, `@radd/ui/lib/cn`, `@radd/ui/hooks`) match no package export or tsconfig path, `lucide-react` is not installed, and `console.css` maps no `muted`, `accent` or `primary-foreground` colour, because `muted`, `accent` and `primary` already name restaurant tokens used by the shared primitives.
+- **Decision.** The Phase 0 primitives (Button, Sheet, Tabs, Chip, Price, Avatar, Skeleton, Toast) stay hand-written on Radix in shadcn's style, reading the Radd tokens. `components.json` stays as the record of the intended setup. P2-T01 decides, before the first console screen, between two options: make the CLI usable (working aliases, `lucide-react`, shadcn colour names mapped inside the console scope only) or keep adapting each component by hand.
+- **Consequences.** A stock shadcn component pasted into the console today would be mis-coloured, so none may be added before P2-T01 settles this. The diner is unaffected: it uses only the shared primitives.

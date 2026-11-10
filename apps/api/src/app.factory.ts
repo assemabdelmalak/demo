@@ -17,8 +17,8 @@ import { buildOpenApiDocument, DOCS_PATH } from './openapi/document';
 export const API_PREFIX = 'v1';
 
 /**
- * Builds the configured Nest/Fastify app without listening. Used by `main.ts`, the integration
- * tests (via `app.inject`) and the OpenAPI generator, so all three see the same global behaviour.
+ * Builds the configured Nest/Fastify app without listening. Used by `main.ts` and the integration
+ * tests (via `app.inject`), so both see the same global behaviour.
  */
 export async function createApp(
   env: ApiEnv,
