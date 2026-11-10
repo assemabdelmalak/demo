@@ -63,20 +63,13 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    env:
-      # Every server-only secret carries a sentinel; none may appear in client bundles (P0-T02).
-      BETTER_AUTH_SECRET: RADD_SECRET_SENTINEL_better_auth
-      PARTICIPANT_TOKEN_SECRET: RADD_SECRET_SENTINEL_participant
-      DEVICE_COOKIE_SECRET: RADD_SECRET_SENTINEL_device
-      RECEIPT_TOKEN_SECRET: RADD_SECRET_SENTINEL_receipt
-      DINER_REVALIDATE_SECRET: RADD_SECRET_SENTINEL_revalidate
-      ACTOR_HASH_SECRET: RADD_SECRET_SENTINEL_actor
-      TRACE_SAMPLING_SECRET: RADD_SECRET_SENTINEL_trace_sampling
-      S3_SECRET_ACCESS_KEY: RADD_SECRET_SENTINEL_s3
-      DATABASE_URL: postgres://u:RADD_SECRET_SENTINEL_db@localhost:5432/radd
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
+      # Every server-only secret in .env.example gets a sentinel value; none may appear in client
+      # bundles (P0-T02). The values are fake, so no paid or external service can be called.
+      - name: Give every server-only secret a sentinel value
+        run: node scripts/secret-sentinels.mjs >> "$GITHUB_ENV"
       - name: Build every app and package (secrets visible to the build)
         run: pnpm turbo run build --env-mode=loose
       - name: No secrets in client bundles

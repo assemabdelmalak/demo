@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// P0-T02: secrets must never reach browser bundles. CI builds with every server-only variable set
-// to a unique sentinel (see ci.yml `build`), then this scans the client output of each Next app.
+// P0-T02: secrets must never reach browser bundles. CI builds with every server-only secret set
+// to a unique sentinel (secret-sentinels.mjs, see ci.yml `build`), then this scans the client
+// output of each Next app.
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
