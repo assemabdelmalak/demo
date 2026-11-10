@@ -1,0 +1,29 @@
+@import 'tailwindcss';
+@import '@radd/ui/tokens.css';
+@import '@radd/ui/console.css';
+
+/* Classes used inside the shared UI package must be generated too. */
+@source '../../../../packages/ui/src';
+
+@theme inline {
+  --font-sans: var(--font-plex), var(--font-plex-arabic), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    /* Dense tables use 14 px; forms 16 px (UX §2). */
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  :lang(ar) body {
+    font-family: var(--font-plex-arabic), var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.6;
+  }
+}

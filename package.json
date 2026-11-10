@@ -1,0 +1,44 @@
+{
+  "name": "radd-menu",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=24.11.0 <25",
+    "pnpm": ">=10.34.7 <11"
+  },
+  "scripts": {
+    "prepare": "lefthook install",
+    "dev": "turbo run dev",
+    "dev:infra": "docker compose -f infra/docker-compose.dev.yml up -d --wait",
+    "dev:infra:down": "docker compose -f infra/docker-compose.dev.yml down",
+    "build": "turbo run build",
+    "lint": "turbo run lint && eslint --no-warn-ignored '*.{js,mjs,ts}' 'e2e/**/*.ts' 'scripts/**/*.mjs'",
+    "typecheck": "turbo run typecheck && tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "turbo run test",
+    "test:int": "turbo run test:int",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --grep @smoke",
+    "openapi": "turbo run build --filter=@radd/api... && pnpm --filter @radd/api openapi && pnpm --filter @radd/api-client generate"
+  },
+  "prettier": "@radd/config/prettier",
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "@playwright/test": "1.64.1",
+    "@radd/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "eslint": "10.13.0",
+    "lefthook": "2.2.2",
+    "lint-staged": "17.6.0",
+    "prettier": "3.9.10",
+    "turbo": "2.11.9",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}

@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+@import '@radd/ui/tokens.css';
+
+/* Classes used inside the shared UI package must be generated too. */
+@source '../../../../packages/ui/src';
+
+@theme inline {
+  --font-sans:
+    var(--font-readex-latin), var(--font-readex-arabic), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.5;
+  }
+
+  /* Arabic needs a little more line height (UX §2). */
+  :lang(ar) body {
+    line-height: 1.55;
+  }
+}

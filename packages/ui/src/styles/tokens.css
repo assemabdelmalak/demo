@@ -1,0 +1,83 @@
+/*
+ * Radd design tokens (UX_SPEC §3–4). Import after `@import "tailwindcss";`.
+ * Restaurant colours default to the Zaatar preset; <ThemeProvider> overrides them per restaurant.
+ */
+:root {
+  /* Restaurant theme (overridden by ThemeProvider) */
+  --surface: #ffffff;
+  --ink: #1f2a1c;
+  --muted: #5b6656;
+  --primary: #4e6b2f;
+  --on-primary: #ffffff;
+  --accent: #b8892b;
+  --line: #e3e8dd;
+
+  /* System colours: meaning, never theme */
+  --success: #1e7a46;
+  --warning: #a15c00;
+  --danger: #b42318;
+  --info: #1d5fa8;
+  --allergen-contains: #b42318;
+  --allergen-may-contain: #a15c00;
+  --allergen-free: #1e7a46;
+  --allergen-unknown: #5f6b7a;
+
+  /* Shape and motion (UX §4) */
+  --radius-sheet: 20px;
+  --radius-image: 12px;
+  --radius-button: 12px;
+  --radius-chip: 999px;
+  --radius-input: 10px;
+  --radius-allergen: 6px;
+  --duration-sheet: 220ms;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-line: var(--line);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-allergen-contains: var(--allergen-contains);
+  --color-allergen-may-contain: var(--allergen-may-contain);
+  --color-allergen-free: var(--allergen-free);
+  --color-allergen-unknown: var(--allergen-unknown);
+
+  --radius-sheet: var(--radius-sheet);
+  --radius-image: var(--radius-image);
+  --radius-button: var(--radius-button);
+  --radius-chip: var(--radius-chip);
+  --radius-input: var(--radius-input);
+  --radius-allergen: var(--radius-allergen);
+
+  /* Diner type scale (UX §2) */
+  --text-caption: 13px;
+  --text-small: 15px;
+  --text-body: 16px;
+  --text-dish: 18px;
+  --text-title: 22px;
+  --text-display: 28px;
+}
+
+@layer base {
+  /* Visible 2 px focus ring in the primary colour with a 2 px offset (UX §9). */
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

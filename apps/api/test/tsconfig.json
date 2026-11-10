@@ -1,0 +1,10 @@
+{
+  // Vitest runs tests as ES modules (top-level await, import.meta), unlike the CommonJS app build.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "rootDir": "${configDir}/.."
+  },
+  "include": ["."]
+}

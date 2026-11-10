@@ -1,0 +1,41 @@
+name: Lighthouse
+
+# Diner performance budget (UX §10). Warn-only until P3-T08 enforces it on /t/[token] with seed data.
+on:
+  push:
+    paths:
+      - apps/diner/**
+      - packages/ui/**
+      - packages/shared/**
+      - lighthouserc.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  diner:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: cp .env.example .env
+      - run: pnpm turbo run build --filter=@radd/diner
+      - name: Start the diner
+        run: |
+          (nohup pnpm --filter @radd/diner start > diner.log 2>&1 &)
+          for _ in $(seq 1 60); do curl -sf http://localhost:3000/healthz > /dev/null && exit 0; sleep 1; done
+          cat diner.log; exit 1
+      - name: Lighthouse CI
+        run: pnpm dlx @lhci/cli@0.15.1 autorun
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lighthouse
+          path: .lighthouseci/
+          retention-days: 14

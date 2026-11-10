@@ -1,0 +1,9 @@
+{
+  "extends": "@radd/config/tsconfig/nextjs.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["next-env.d.ts", "src", "*.ts", "*.mjs", ".next/types/**/*.ts", "messages/*.json"],
+  "exclude": ["node_modules", ".next"]
+}

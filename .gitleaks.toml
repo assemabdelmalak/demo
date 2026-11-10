@@ -1,0 +1,27 @@
+# Secret scanning (SEC §2). Extends the default rules; the allowlist covers values that only
+# look like secrets. Real local-development credentials live in .env.example and compose files,
+# which are placeholders by design (DEPLOYMENT §4).
+title = "Radd Menu gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Pinned Valkey image tags (valkey/valkey:<version>) look like user:password pairs"
+regexTarget = "line"
+regexes = ['''valkey/valkey:[0-9]''']
+
+[[allowlists]]
+description = "Field names in the log redaction list, not values"
+paths = ['''packages/config/src/logging/index\.ts''']
+regexTarget = "line"
+regexes = ['''['"]\*\.apiKey['"]''']
+
+[[allowlists]]
+description = "Local-only placeholder credentials (.env.example, compose, test fixtures)"
+paths = [
+  '''\.env\.example''',
+  '''infra/docker-compose\.dev\.yml''',
+  '''infra/seaweedfs/s3\.json''',
+  '''infra/postgres/init/.*\.sql''',
+]
