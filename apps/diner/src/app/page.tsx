@@ -26,7 +26,7 @@ export default async function HomePage() {
             </h2>
             <p className="text-small text-muted">{t('sampleDescription')}</p>
           </div>
-          <Price primary="$6.50" secondary={t('sampleSecondary')} />
+          <Price primary={t('samplePrimary')} secondary={t('sampleSecondary')} />
         </section>
         <Button className="w-full">{t('cta')}</Button>
       </main>
