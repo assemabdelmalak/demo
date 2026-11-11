@@ -201,11 +201,20 @@ export const consoleEnvSchema = z
   })
   .superRefine(refineSecrets(['TRACE_SAMPLING_SECRET']));
 
+/**
+ * The one-off migration process (`node dist/migrate.js`). It alone holds the schema owner's
+ * credential; the API and worker connect with roles that cannot change the schema.
+ */
+export const migrateEnvSchema = z.object({
+  DATABASE_URL_MIGRATOR: url,
+});
+
 export const envSchemas = {
   api: apiEnvSchema,
   worker: workerEnvSchema,
   diner: dinerEnvSchema,
   console: consoleEnvSchema,
+  migrate: migrateEnvSchema,
 } as const;
 
 export const publicEnvSchemas = {
