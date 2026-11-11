@@ -1,9 +1,10 @@
-import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { type Redis } from 'ioredis';
-import { Pool } from 'pg';
+
+import { type DbHandle } from '@radd/db';
 
 import { type HealthReady } from './health.dto';
-import { API_ENV, type ApiEnv } from '../config/env.module';
+import { DB } from '../db/db.module';
 import { QueueProducer } from '../queues/queue-producer';
 import { VALKEY } from '../valkey/valkey.module';
 
@@ -26,33 +27,20 @@ function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
  * because browsing and ordering do not depend on it (CLAUDE §3.4 spirit).
  */
 @Injectable()
-export class ReadinessService implements OnApplicationShutdown {
+export class ReadinessService {
   private readonly logger = new Logger(ReadinessService.name);
-  // A one-connection pool just for probes; P1-T01 replaces it with the shared db package pool.
-  private readonly pool: Pool;
 
   constructor(
-    @Inject(API_ENV) env: ApiEnv,
+    // The pool requests use: a probe that passes on a private connection would hide an exhausted pool.
+    @Inject(DB) private readonly database: DbHandle,
     @Inject(VALKEY) private readonly valkey: Redis,
     private readonly queues: QueueProducer,
-  ) {
-    this.pool = new Pool({
-      connectionString: env.DATABASE_URL,
-      max: 1,
-      connectionTimeoutMillis: CHECK_TIMEOUT_MS,
-      idleTimeoutMillis: 30_000,
-      application_name: 'radd-api-health',
-    });
-    // An idle client error must not crash the process; the next check reports it.
-    this.pool.on('error', (error) => {
-      this.logger.warn({ err: error }, 'health pool client error');
-    });
-  }
+  ) {}
 
   async check(): Promise<HealthReady> {
     const [database, valkey, queue] = await Promise.all([
       this.run('database', async () => {
-        await this.pool.query('select 1');
+        await this.database.pool.query('select 1');
       }),
       this.run('valkey', async () => {
         await this.valkey.ping();
@@ -74,9 +62,5 @@ export class ReadinessService implements OnApplicationShutdown {
       this.logger.warn({ err: error, check: label }, 'readiness check failed');
       return 'error';
     }
-  }
-
-  async onApplicationShutdown(): Promise<void> {
-    await this.pool.end().catch(() => undefined);
   }
 }

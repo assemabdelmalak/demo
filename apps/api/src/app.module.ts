@@ -12,6 +12,7 @@ import { zodFieldErrors } from './common/problem';
 import { ProblemDetailsFilter } from './common/problem.filter';
 import { REQUEST_ID_HEADER } from './common/request-id';
 import { type ApiEnv, EnvModule } from './config/env.module';
+import { DbModule } from './db/db.module';
 import { HealthModule } from './health/health.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { type IdempotencyOptions } from './idempotency/idempotency.store';
@@ -64,6 +65,7 @@ export class AppModule {
             },
           },
         }),
+        DbModule,
         ValkeyModule,
         QueuesModule,
         ThrottlingModule,
