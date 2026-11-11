@@ -7,9 +7,11 @@ Claude Code keeps this file up to date after **every** task.
 
 ## Current phase
 
-Phase 0 — Foundation: every task is done and CI is green. [PR #1](https://github.com/assemabdelmalak/demo/pull/1) (`phase/00-foundation` → `master`) waits for the owner's review at the demo checkpoint.
+Phase 1 — Data model, auth, tenancy (in progress on branch `phase/01-data-auth-tenancy`, PR to `master` at the end). Phase 0 is merged ([PR #1](https://github.com/assemabdelmalak/demo/pull/1)); `master` is green and the first four images are in GHCR.
 
 **Environment note.** The agent's container has no Docker daemon. Anything that needs Docker (`pnpm dev:infra`, `pnpm test:int`, e2e-smoke, image builds) is verified in GitHub Actions. A task that depends on Docker is marked ✅ only after its CI job is green; until then it stays 🟨 "awaiting CI".
+
+**Local database (Phase 1).** The container does have PostgreSQL 16 and Redis binaries, so integration tests also run locally against them through `TEST_DATABASE_URL` and `TEST_VALKEY_URL`. CI stays the reference (PostgreSQL 17 with pgvector, Valkey 8): the two harness tests that assert that exact database fail locally by design, and a Docker-dependent task is still marked ✅ only after CI is green.
 
 ## Needs owner
 
@@ -55,7 +57,15 @@ T01 → T02 → T03 → T07.a → T04.a–c → T05 → T04.d → T06.a–c → 
 | P0-T10 Docs scaffolding | ✅ | 2026-10-20 | PROGRESS rows for every P0 sub-task with the run order; "Needs owner" filled; ADR-009 to ADR-019 in DECISIONS; specs updated where the build deviated (CLAUDE §2.5/§3.5, PRD §7, ARCH §10–11, DATA_MODEL, SEED_DATA, UX §6.1, TESTING, DEPLOYMENT §2/§5, API, IMPLEMENTATION_PLAN, OWNER_CHECKLIST). Also fixed on the way: empty env values now fall back to defaults; the shared Vitest config no longer resolves bundler-only ESM for Node tests. | [PR #1](https://github.com/assemabdelmalak/demo/pull/1): [CI 30](https://github.com/assemabdelmalak/demo/actions/runs/39643433645), [Docker 15](https://github.com/assemabdelmalak/demo/actions/runs/39643433558), [CodeQL 1](https://github.com/assemabdelmalak/demo/actions/runs/39643433713), [Lighthouse 8](https://github.com/assemabdelmalak/demo/actions/runs/39643308420) |
 | P0 acceptance audit | ✅ | 2026-11-10 | Two independent read-only audits checked every "Do", "Accept" and "Test" bullet of P0-T01 to T10 against the code: 80 bullets, none blocking Phase 1. Fixed from it: the client-bundle secret scan gave a sentinel to only 9 of the 20 server secrets, so it now derives them from `.env.example` (`scripts/secret-sentinels.mjs`; a planted leak fails the scan); a restaurant theme did not reach sheet content, which Radix portals outside the themed element (now carried through a context, with a DOM test that fails on the old code); the placeholder price moved into the message catalogues; stale `main` wording in IMPLEMENTATION_PLAN and AI_ARCHITECTURE; ADR-010 and ADR-012 wording; two unused CI variable names in `.env.example`. Recorded, not fixed: see "Carried into later phases" and ADR-020. Re-run locally on 2026-11-10 without cache: lint, typecheck, 177 unit tests, build, 32 Playwright tests against the full stack, and the API and worker integration suites (45 tests) against a local Postgres 16 and Redis; the two container-harness tests that assert Postgres 17 and pgvector correctly fail on that stand-in and pass in CI. | |
 
-Add rows for later phases when each phase starts.
+### Phase 1
+
+Plan approved by the owner on 2026-11-11. Sub-task splits and run order: T01 → T02.a–c → T03.a–b → T04.a–c → T05 → T06.a–b → T07.a–b → T08 → docs and PR. Decisions are ADR-021 to ADR-030.
+
+| Task | Status | Date | Notes / follow-ups | PR |
+|---|---|---|---|---|
+| P1-T01 Drizzle setup | 🟨 | 2026-11-11 | New `packages/db`: `createDb` (node-postgres pool + Drizzle 0.45), column helpers (`id`, `timestamps`, `softDelete`, `localizedText`, `money`, `citext`), one schema file per domain (filled in T02), committed SQL migrations in `drizzle/` with the journal in its own `drizzle` schema, `runMigrations`. `apps/api/dist/migrate.js` is the one migration entry point for deploys and `pnpm db:migrate`; it reads `DATABASE_URL_MIGRATOR` through a new `migrate` env schema, so the API never holds the schema owner's credential. `pnpm db:generate`, `db:migrate`, `db:studio`. The API has one shared pool (`DbModule`); readiness probes that same pool. `LocalizedText` type and zod schema in `@radd/shared`. First migration creates the three trusted extensions. Toolchain checks done first: Better Auth (ESM-only) and `@node-rs/argon2` load from the CommonJS build on Node 24; `drizzle-kit/api` runs under Vitest 5 (its types target zod 3, so the snapshot test types the two functions by hand). Tests: schema snapshot (fails when a migration is missing), migrations apply to an empty database and are idempotent. The worker's DB module lands with its first consumer in T07. Awaiting CI. | |
+
+Add rows as each task completes.
 
 ## Carried into later phases
 
@@ -71,4 +81,4 @@ Small items found by the Phase 0 acceptance audit that belong with later work. E
 
 | Phase | Date | Owner verdict | Notes |
 |---|---|---|---|
-| P0 | | | |
+| P0 | 2026-11-10 | Approved ("merge and continue") | The owner reviewed the screenshots, the clickable snapshot and the test report, then asked to merge PR #1 and start Phase 1. |
