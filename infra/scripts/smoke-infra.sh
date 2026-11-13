@@ -24,7 +24,7 @@ check_postgres() {
   [[ "$exts" == "citext,pg_trgm,unaccent,vector" ]] && pass "extensions: $exts" || fail "extensions: got '$exts'"
   roles=$("${COMPOSE[@]}" exec -T postgres psql -U postgres -d radd -tAc \
     "select string_agg(rolname || ':' || rolbypassrls, ',' order by rolname) from pg_roles where rolname like 'app\_%'")
-  [[ "$roles" == "app_admin:true,app_migrator:false,app_runtime:false" ]] && pass "roles: $roles" || fail "roles: got '$roles'"
+  [[ "$roles" == "app_admin:true,app_migrator:false,app_runtime:false,app_worker:false" ]] && pass "roles: $roles" || fail "roles: got '$roles'"
   "${COMPOSE[@]}" exec -T -e PGPASSWORD=app_runtime postgres psql -h 127.0.0.1 -U app_runtime -d radd -tAc 'select 1' >/dev/null \
     && pass "app_runtime can connect" || fail "app_runtime cannot connect"
 }
