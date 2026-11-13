@@ -46,4 +46,22 @@ describe.skipIf(!runtime.ready)('runMigrations', () => {
     await runMigrations({ url: database.url });
     expect(await count()).toBe(before);
   });
+
+  it('applies again from scratch after the database is dropped (reversible in dev)', async () => {
+    const first = await createTestDatabase(postgres.url);
+    await first.drop();
+    const second = await createTestDatabase(postgres.url);
+    try {
+      const again = new Client({ connectionString: second.url });
+      await again.connect();
+      const { rows } = await again.query<{ n: string }>(
+        `select count(*) as n from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'`,
+      );
+      await again.end();
+      // 52 tables plus three monthly partitions of menu_events.
+      expect(Number(rows[0]?.n)).toBe(55);
+    } finally {
+      await second.drop();
+    }
+  });
 });

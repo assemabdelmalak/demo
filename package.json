@@ -22,7 +22,7 @@
     "test:int": "turbo run test:int",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test --grep @smoke",
-    "db:generate": "pnpm --filter @radd/db db:generate",
+    "db:generate": "turbo run build --filter=@radd/shared && pnpm --filter @radd/db db:generate",
     "db:migrate": "turbo run build --filter=@radd/api && node --env-file-if-exists=.env apps/api/dist/migrate.js",
     "db:studio": "pnpm --filter @radd/db db:studio",
     "openapi": "turbo run build --filter=@radd/api... && pnpm --filter @radd/api openapi && pnpm --filter @radd/api-client generate"

@@ -8,6 +8,20 @@
       "when": 1794413984171,
       "tag": "0000_extensions",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794414770631,
+      "tag": "0001_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794414796312,
+      "tag": "0002_triggers_and_partitions",
+      "breakpoints": true
     }
   ]
 }

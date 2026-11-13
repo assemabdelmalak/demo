@@ -4,6 +4,8 @@ import { Client } from 'pg';
 
 import { runMigrations } from '../migrate.js';
 
+export * from './factories.js';
+
 export interface TestDatabase {
   /** Name of the throwaway database. */
   name: string;
