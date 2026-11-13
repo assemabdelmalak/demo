@@ -3,7 +3,7 @@
 ## 0. Conventions
 
 - **Primary keys.** `id uuid` holding a UUIDv7 generated in the app, unless noted.
-- **Timestamps.** `created_at timestamptz not null default now()`, `updated_at timestamptz not null default now()`. A trigger or an app-side hook updates `updated_at`.
+- **Timestamps.** `created_at timestamptz not null default now()`, `updated_at timestamptz not null default now()`. The `set_updated_at()` trigger updates `updated_at` on every table that has the column, so raw SQL and bulk updates keep it current too.
 - **Soft delete.** `deleted_at timestamptz null` where noted. Default queries exclude deleted rows.
 - **Tenant columns.** Every tenant table has `organization_id uuid not null` and `restaurant_id uuid` where restaurant-scoped. RLS is enabled on all of them.
 - **Money.**
@@ -13,6 +13,8 @@
 - **Localized text.** `LocalizedText` is JSONB `{ "ar"?: string, "en"?: string, "fr"?: string }`, validated by zod: at least one key, each value trimmed and 1..N characters.
 - **Enums.** Defined as Postgres enums via Drizzle `pgEnum`, and mirrored in `packages/shared/enums.ts`.
 - **Naming.** Every foreign key is indexed. Composite indexes are listed below.
+- **Tenant foreign keys (ADR-022).** A reference from one tenant table to another is a composite key on `(organization_id, <column>)` → `(organization_id, id)`, and every referenced tenant table has `UNIQUE (organization_id, id)`. Postgres checks foreign keys without applying RLS, so a single-column key would let a crafted ID attach a row to another organisation's parent. The table listings below show the plain column for brevity. References to `user` and `organization` are ordinary single-column keys.
+- **Checks.** Besides the checks listed below, enumerated text columns, basis-point rates and counts carry `CHECK` constraints (for example `restaurants.slug`, `lbp_rounding_mode`, `assets.status`, `discounts.value`).
 - **Extensions.** `pg_trgm`, `unaccent`, `citext`. (`vector` is installed but not used in v1.)
 
 ---
@@ -60,7 +62,14 @@ actor_type            : 'user' | 'staff_device' | 'diner' | 'system' | 'super_ad
 
 ### Better Auth core tables
 
-Better Auth generates `user`, `session`, `account`, `verification`, `organization`, `member`, `invitation`. Keep its generated schema and extend it through its `additionalFields` support. These tables are global; they have no RLS.
+Better Auth generates `user`, `session`, `account`, `verification`, `organization`, `member`, `invitation`, and `two_factor` for its two-factor plugin. Keep its generated schema and extend it through its `additionalFields` support. These tables are global; they have no RLS. Primary keys are `uuid` holding UUIDv7, like every other table (ADR-023).
+
+**`session` additional fields** (server-set only; clients cannot write them):
+- `active_organization_id uuid null` (Better Auth's organization plugin)
+- `staff_device_id uuid null → staff_devices.id` and `pin_session boolean not null default false` (ADR-026)
+- `two_factor_verified_at timestamptz null` (ADR-027)
+
+**`user` additional field:** `two_factor_enabled boolean not null default false` (two-factor plugin).
 
 **`organization` additional fields:**
 - `country text default 'LB'`
@@ -297,7 +306,7 @@ created_at, updated_at, deleted_at
 ### `menu_item_modifier_groups`
 
 ```
-item_id, group_id, position, PRIMARY KEY (item_id, group_id)
+item_id, group_id, organization_id, restaurant_id, position, PRIMARY KEY (item_id, group_id)
 ```
 
 ### `menu_versions`
@@ -504,7 +513,7 @@ created_by_user_id, created_at, updated_at, applied_at null
 ### `import_job_pages`
 
 ```
-id, import_job_id, asset_id, page_index int, status text, result jsonb null, error jsonb null,
+id, organization_id, restaurant_id, import_job_id, asset_id, page_index int, status text, result jsonb null, error jsonb null,
 model text, usage jsonb, attempts smallint default 0, updated_at
 ```
 
@@ -572,7 +581,7 @@ PRIMARY KEY (restaurant_id, day)
 ### `daily_dish_metrics`
 
 ```
-restaurant_id, day, dish_id, views int, adds int, ordered_qty int, chat_mentions int,
+restaurant_id, day, dish_id, organization_id, views int, adds int, ordered_qty int, chat_mentions int,
 recommended int, PRIMARY KEY (restaurant_id, day, dish_id)
 ```
 
@@ -612,9 +621,11 @@ import_pages int, whatsapp_messages int, PRIMARY KEY (organization_id, period)
 ### `feature_flags`
 
 ```
-key text, organization_id uuid null (null = global default), enabled boolean,
-PRIMARY KEY (key, organization_id)
+id, key text, organization_id uuid null (null = global default), enabled boolean,
+UNIQUE NULLS NOT DISTINCT (key, organization_id)
 ```
+
+A primary key cannot contain a nullable column, so the pair is a unique constraint and the row has its own `id`.
 
 ### `audit_logs`
 
@@ -643,7 +654,7 @@ topics text[], created_at, revoked_at
 
 ### `idempotency_keys`
 
-Valkey is the primary store. This Postgres fallback is optional.
+Valkey is the primary store. This Postgres fallback is optional and **is not created** (ADR-015); the shape is kept here in case it is needed later.
 
 ```
 key text pk, scope text, response jsonb, status_code int, created_at  -- TTL 24h via cleanup job
