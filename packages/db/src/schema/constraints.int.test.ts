@@ -48,7 +48,9 @@ describe.skipIf(!runtime.ready)('schema constraints (DATA_MODEL)', () => {
   beforeAll(async () => {
     postgres = await startPostgres();
     database = await createTestDatabase(postgres.url);
-    handle = createDb({ url: database.url });
+    // The admin role may write any organisation's rows, so these tests exercise the constraints
+    // themselves; Row Level Security has its own suite.
+    handle = createDb({ url: database.urls.admin });
     const organization = await createOrganization(handle.db);
     const restaurant = await createRestaurant(handle.db, organization.id);
     scope = { organizationId: organization.id, restaurantId: restaurant.id };
@@ -202,8 +204,11 @@ describe.skipIf(!runtime.ready)('schema constraints (DATA_MODEL)', () => {
       pgCode(handle.db.insert(schema.menuEvents).values({ ...scope, type: 'scan', occurredAt }));
     expect(await event(new Date())).toBeUndefined();
 
-    // Calling the maintenance function again is harmless and extends the range.
-    await handle.db.execute(sql`select ensure_menu_events_partitions(3)`);
+    // Calling the maintenance function again is harmless and extends the range. Only the schema
+    // owner may call it.
+    const migrator = createDb({ url: database.urls.migrator });
+    await migrator.db.execute(sql`select ensure_menu_events_partitions(3)`);
+    await migrator.close();
     const inFourMonths = new Date();
     inFourMonths.setUTCDate(1);
     inFourMonths.setUTCMonth(inFourMonths.getUTCMonth() + 3);

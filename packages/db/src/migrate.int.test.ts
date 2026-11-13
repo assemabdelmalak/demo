@@ -16,7 +16,7 @@ describe.skipIf(!runtime.ready)('runMigrations', () => {
   beforeAll(async () => {
     postgres = await startPostgres();
     database = await createTestDatabase(postgres.url);
-    client = new Client({ connectionString: database.url });
+    client = new Client({ connectionString: database.urls.superuser });
     await client.connect();
   });
 
@@ -43,7 +43,7 @@ describe.skipIf(!runtime.ready)('runMigrations', () => {
     const before = await count();
     expect(before).toBeGreaterThan(0);
 
-    await runMigrations({ url: database.url });
+    await runMigrations({ url: database.urls.migrator });
     expect(await count()).toBe(before);
   });
 
@@ -52,7 +52,7 @@ describe.skipIf(!runtime.ready)('runMigrations', () => {
     await first.drop();
     const second = await createTestDatabase(postgres.url);
     try {
-      const again = new Client({ connectionString: second.url });
+      const again = new Client({ connectionString: second.urls.superuser });
       await again.connect();
       const { rows } = await again.query<{ n: string }>(
         `select count(*) as n from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'`,
