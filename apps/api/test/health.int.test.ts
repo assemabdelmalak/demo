@@ -7,6 +7,7 @@ import {
   startValkey,
   type StartedService,
 } from '@radd/config/testing';
+import { createTestDatabase, type TestDatabase } from '@radd/db/testing';
 
 import { createApp } from '../src/app.factory';
 import { testEnv } from './support/env';
@@ -37,15 +38,19 @@ async function boot(overrides: Record<string, string>): Promise<NestFastifyAppli
 describe.skipIf(!fullRuntime.ready)('GET /v1/health/ready with every dependency up', () => {
   let postgres: StartedService;
   let valkey: StartedService;
+  let database: TestDatabase;
   let app: NestFastifyApplication;
 
   beforeAll(async () => {
     [postgres, valkey] = await Promise.all([startPostgres(), startValkey()]);
-    app = await boot({ DATABASE_URL: postgres.url, REDIS_URL: valkey.url });
+    database = await createTestDatabase(postgres.url);
+    // The role the API runs as in production, on a migrated database.
+    app = await boot({ DATABASE_URL: database.urls.runtime, REDIS_URL: valkey.url });
   });
 
   afterAll(async () => {
     await app.close();
+    await database.drop();
     await Promise.all([postgres.stop(), valkey.stop()]);
   });
 
