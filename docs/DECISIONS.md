@@ -101,6 +101,7 @@ Format: `ADR-NNN — Title · Date · Status`, then Context, Decision, Consequen
 - **Context.** `.env.example` connects as `app_runtime`, `app_migrator` and `app_admin`, but the real roles, grants and RLS policies are P1-T03 work. The API readiness check in P0 already needs to connect.
 - **Decision.** `infra/postgres/init/02-local-roles.sql` creates the three login roles for local development only (`app_admin` with BYPASSRLS, `app_runtime` without), makes `app_migrator` the database and schema owner, and grants `CONNECT`/`USAGE`. It is marked local-only.
 - **Consequences.** P1-T03's role migration must be idempotent (`IF NOT EXISTS`) so it applies cleanly on top of these roles, and is the only source of truth for staging and production.
+- **Superseded by ADR-021** (2026-11-13): roles are created by a superuser bootstrap, not by a migration, and the compose file now mounts that same bootstrap; `02-local-roles.sql` is gone.
 
 ## ADR-015 — Idempotency semantics · 2026-10-20 · Accepted
 
@@ -164,6 +165,20 @@ Format: `ADR-NNN — Title · Date · Status`, then Context, Decision, Consequen
 - **Context.** P0-T06 asks for shadcn/ui "initialised in the package". The shadcn registry (`ui.shadcn.com`) is blocked by the agent environment's network policy, so `shadcn init` and `shadcn add` cannot run. The Phase 0 acceptance audit also found that `packages/ui/components.json` does not describe a working setup: its aliases (`@radd/ui/components`, `@radd/ui/lib/cn`, `@radd/ui/hooks`) match no package export or tsconfig path, `lucide-react` is not installed, and `console.css` maps no `muted`, `accent` or `primary-foreground` colour, because `muted`, `accent` and `primary` already name restaurant tokens used by the shared primitives.
 - **Decision.** The Phase 0 primitives (Button, Sheet, Tabs, Chip, Price, Avatar, Skeleton, Toast) stay hand-written on Radix in shadcn's style, reading the Radd tokens. `components.json` stays as the record of the intended setup. P2-T01 decides, before the first console screen, between two options: make the CLI usable (working aliases, `lucide-react`, shadcn colour names mapped inside the console scope only) or keep adapting each component by hand.
 - **Consequences.** A stock shadcn component pasted into the console today would be mis-coloured, so none may be added before P2-T01 settles this. The diner is unaffected: it uses only the shared primitives.
+
+## ADR-021 — Database roles: superuser bootstrap, migrations as the schema owner · 2026-11-13 · Accepted
+
+- **Context.** P1-T03 asks for a "hand-written SQL migration creating the roles", and ADR-014 made that migration the only source of truth. But DEPLOYMENT runs migrations as `app_migrator`, the schema owner. Creating roles needs `CREATEROLE`, granting `BYPASSRLS` needs a superuser, and a schema owner with either could undo tenant isolation. Passwords also cannot live in committed SQL.
+- **Decision.**
+  - `packages/db/sql/bootstrap-roles.sql`, run once by a superuser, creates four roles without passwords and sets their attributes: `app_migrator` (owns the database and schema), `app_runtime` (the API), `app_worker` (the worker) and `app_admin` (`BYPASSRLS`, super-admin module only). The operator sets the passwords. Local compose mounts the same file; only `03-local-passwords.sql` is local.
+  - The worker gets its own role, so narrow cross-tenant functions (the outbox dispatcher in P1-T07) can be executable by the worker and not by the API.
+  - Migrations run as `app_migrator`. Before applying anything, the runner reads the catalog and refuses to continue if a role is missing, if it is not connected as `app_migrator`, or if `app_runtime` or `app_worker` is a superuser, has `BYPASSRLS`, `CREATEROLE` or `CREATEDB`, is a member of another role, or owns a relation (`roleProblems` in `packages/db/src/roles.ts`).
+  - Privileges are granted table by table in the migrations, never through blanket default privileges: history, payments, published menu versions and the audit log cannot be deleted by the application roles, and `outbox_events` only lets the API set `dispatched_at`. A test compares the catalog with the documented matrix for every table.
+  - `PUBLIC` is revoked from the database and from the `public` schema.
+- **Consequences.**
+  - A new environment needs one manual step before the first deploy: run the bootstrap as a superuser and set four passwords (DEPLOYMENT §6). After that every deploy is `node dist/migrate.js`.
+  - Every new table needs explicit `GRANT`s in its migration, or the API cannot read it and the privilege test fails.
+  - Tests build each database the same way (`createTestDatabase`): bootstrap as superuser, migrate as `app_migrator`, connect as `app_runtime`, so they exercise the real permission model.
 
 ## ADR-022 — Row Level Security shape and tenant-safe foreign keys · 2026-11-13 · Accepted
 

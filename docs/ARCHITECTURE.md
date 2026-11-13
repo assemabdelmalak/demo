@@ -285,13 +285,16 @@ In short:
 - **Tenant = organization.** An organisation has 1..n restaurants.
 - Every tenant table carries `organization_id`. Restaurant-scoped tables also carry `restaurant_id`.
 - **RLS:**
-  - Policies use `current_setting('app.org_id', true)::uuid`.
-  - `withTenant(orgId, fn)` opens a transaction and runs `SET LOCAL app.org_id = $1`.
-  - The runtime DB role has no `BYPASSRLS`.
+  - Policies compare `organization_id` with `current_org_id()`, which reads `current_setting('app.org_id', true)`.
+  - `withTenant(orgId, fn)` opens a transaction and runs `set_config('app.org_id', $1, true)` (transaction-local, like `SET LOCAL`, but it accepts a parameter).
+  - The API (`app_runtime`) and worker (`app_worker`) roles have no `BYPASSRLS` (ADR-021).
   - Super admin operations use a separate `app_admin` role connection, used only by the `admin` module and fully audited.
-- **Public reads** go through:
-  - `menu_versions` (public data only; RLS policy allows reading published rows by restaurant)
+  - References between tenant tables include `organization_id`, so a crafted ID cannot cross organisations (ADR-022).
+- **Public reads** (`withPublic(fn)` sets `app.public = 'on'` for the transaction) go through:
+  - `menu_versions`: a policy allows reading the row a live restaurant currently publishes
+  - the `public_restaurants` view: public columns of live restaurants only
   - dedicated public repositories that never touch private tables without an explicit restaurant scope
+- **Before a tenant is known**, the API resolves a restaurant's organisation with the `restaurant_org(id)` function, which returns the ID and nothing else; it then checks membership and calls `withTenant`.
 - **Diner tokens** carry `rid` and `sid`. Every public session endpoint verifies the path `sid` equals the token `sid`.
 
 ## 10. Internationalisation

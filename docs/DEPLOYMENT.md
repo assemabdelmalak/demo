@@ -89,10 +89,16 @@ See `.env.example`. Set them per environment in Coolify. Secrets are never store
 - Write migrations with drizzle-kit (SQL committed). RLS policies and roles live in hand-written SQL migration files.
 - **Expand / contract.** Never drop or rename a column in the same release that stops using it. Do it in two releases.
 - **Destructive migrations** require a `-- DESTRUCTIVE` header and owner approval in the PR.
-- **Roles:**
-  - `app_migrator` — owner of the schema
-  - `app_runtime` — CRUD on tables, subject to RLS
+- **Roles (ADR-021):**
+  - `app_migrator` — owner of the database and schema; used only by `node dist/migrate.js`
+  - `app_runtime` — the API; table privileges granted per table, subject to RLS
+  - `app_worker` — the worker; subject to RLS; the only role that may run the outbox dispatcher functions
   - `app_admin` — for the admin module; `BYPASSRLS`; used only by admin services
+- **First-time setup of a database (once per environment, as a superuser):**
+  1. Create the database.
+  2. Run `packages/db/sql/bootstrap-roles.sql` against it. It creates the four roles without passwords, makes `app_migrator` the owner and closes the database to `PUBLIC`. It is idempotent.
+  3. Set a strong password on each role (`ALTER ROLE app_runtime PASSWORD '…'`) and put the four connection strings in Coolify: `DATABASE_URL_MIGRATOR` for the migrate step, `DATABASE_URL` for the API (`app_runtime`) and for the worker (`app_worker`), `DATABASE_URL_ADMIN` for the API.
+- **The migrate step refuses to run** if the roles are missing or unsafe (for example if `app_runtime` could bypass RLS), and prints what to fix.
 
 ## 7. Backups and disaster recovery
 

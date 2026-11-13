@@ -324,7 +324,7 @@ published_by_user_id, published_at timestamptz not null
 UNIQUE (restaurant_id, version)
 ```
 
-RLS allows public read of rows referenced by `restaurants.published_menu_version_id` via the public repository role.
+RLS allows public read of the row referenced by a live restaurant's `published_menu_version_id`, inside `withPublic()` only (`app.public = 'on'`, ADR-022). There is no separate database role for public reads. Published versions are immutable: the application roles may insert and read them, never update or delete.
 
 ---
 
