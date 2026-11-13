@@ -110,6 +110,9 @@ jobs:
       - name: Use the example environment
         run: cp .env.example .env
       - run: pnpm build
+      # The same entry point a deploy runs: as app_migrator, after checking the roles (ADR-021).
+      - name: Apply database migrations
+        run: node --env-file=.env apps/api/dist/migrate.js
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Start the API and worker
