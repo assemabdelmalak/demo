@@ -1,4 +1,5 @@
 import helmet from '@fastify/helmet';
+import { Logger as NestLogger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { SwaggerModule } from '@nestjs/swagger';
@@ -6,6 +7,11 @@ import { type FastifyError, type FastifyReply, type FastifyRequest } from 'fasti
 import { Logger } from 'nestjs-pino';
 
 import { type AppModuleOptions, AppModule } from './app.module';
+import { type AuthRateLimitStorage } from './auth/auth-rate-limit';
+import { type Auth } from './auth/auth.config';
+import { registerAuth } from './auth/auth.fastify';
+import { AUTH, AUTH_OPTIONS, AUTH_RATE_LIMITER, type AuthModuleOptions } from './auth/auth.module';
+import { LOCALE_HEADER } from './auth/auth.utils';
 import { resolveClientIp } from './common/actor';
 import { problemTypeBase, toProblem } from './common/problem';
 import { sendProblem } from './common/problem.filter';
@@ -48,20 +54,32 @@ export async function createApp(
   app.setGlobalPrefix(API_PREFIX);
   app.enableShutdownHooks();
 
-  app
-    .getHttpAdapter()
-    .getInstance()
-    .addHook('onRequest', (request, reply, done) => {
-      void reply.header(REQUEST_ID_HEADER, request.id);
-      request.clientIp = resolveClientIp(request, env.CLIENT_IP_HEADER);
-      done();
-    });
+  const fastify = app.getHttpAdapter().getInstance();
+  fastify.addHook('onRequest', (request, reply, done) => {
+    void reply.header(REQUEST_ID_HEADER, request.id);
+    request.clientIp = resolveClientIp(request, env.CLIENT_IP_HEADER);
+    done();
+  });
+
+  // After the client-IP hook: the auth bridge forwards `request.clientIp`, and its session hook
+  // must set `request.principal` before the global throttler guard reads it (ADR-016).
+  await registerAuth(fastify, app.get<Auth>(AUTH), env, {
+    limiter: app.get<AuthRateLimitStorage>(AUTH_RATE_LIMITER),
+    codeRequestLimit: app.get<Required<AuthModuleOptions>>(AUTH_OPTIONS).codeRequestLimit,
+    logger: new NestLogger('AuthBridge'),
+  });
 
   app.enableCors({
     origin: env.TRUSTED_ORIGINS,
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['content-type', 'authorization', REQUEST_ID_HEADER, IDEMPOTENCY_HEADER],
+    allowedHeaders: [
+      'content-type',
+      'authorization',
+      REQUEST_ID_HEADER,
+      IDEMPOTENCY_HEADER,
+      LOCALE_HEADER,
+    ],
     exposedHeaders: [REQUEST_ID_HEADER, IDEMPOTENT_REPLAYED_HEADER, 'retry-after'],
     maxAge: 600,
   });

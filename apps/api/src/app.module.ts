@@ -6,8 +6,10 @@ import { createZodValidationPipe } from 'nestjs-zod';
 import { ZodError } from 'zod';
 
 import { loggerOptions } from '@radd/config/logging';
+import { type Mailer } from '@radd/mail';
 import { DomainError } from '@radd/shared';
 
+import { AuthModule, type AuthModuleOptions } from './auth/auth.module';
 import { zodFieldErrors } from './common/problem';
 import { ProblemDetailsFilter } from './common/problem.filter';
 import { REQUEST_ID_HEADER } from './common/request-id';
@@ -16,6 +18,7 @@ import { DbModule } from './db/db.module';
 import { HealthModule } from './health/health.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { type IdempotencyOptions } from './idempotency/idempotency.store';
+import { MailModule } from './mail/mail.module';
 import { QueuesModule } from './queues/queues.module';
 import { ThrottlingModule } from './throttling/throttling.module';
 import { ValkeyModule } from './valkey/valkey.module';
@@ -34,6 +37,10 @@ export interface AppModuleOptions {
   imports?: ModuleMetadata['imports'];
   /** Overrides for tests; production uses the defaults. */
   idempotency?: Partial<IdempotencyOptions>;
+  /** Replaces the configured mail adapter, e.g. with a `MemoryMailer` in tests. */
+  mailer?: Mailer;
+  /** Auth rate limits; both are on unless a test turns them off. */
+  auth?: AuthModuleOptions;
 }
 
 @Module({})
@@ -67,9 +74,11 @@ export class AppModule {
         }),
         DbModule,
         ValkeyModule,
+        MailModule.register(options.mailer),
         QueuesModule,
         ThrottlingModule,
         IdempotencyModule.register(options.idempotency),
+        AuthModule.register(options.auth),
         HealthModule,
         ...(options.imports ?? []),
       ],

@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MeController_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/health/live": {
         parameters: {
             query?: never;
@@ -40,6 +56,35 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        MeDto: {
+            user: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                /** Format: email */
+                email: string;
+                emailVerified: boolean;
+                twoFactorEnabled: boolean;
+            };
+            session: {
+                /** Format: uuid */
+                id: string;
+                activeOrganizationId: string | null;
+                pinSession: boolean;
+                staffDeviceId: string | null;
+                twoFactorVerifiedAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+            };
+            memberships: {
+                /** Format: uuid */
+                organizationId: string;
+                name: string;
+                slug: string;
+                /** @enum {string} */
+                role: "owner" | "manager" | "staff" | "kitchen";
+            }[];
+        };
         HealthLiveDto: {
             /** @constant */
             status: "ok";
@@ -82,6 +127,34 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    MeController_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeDto"];
+                };
+            };
+            /** @description Error (RFC 9457 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     HealthController_live: {
         parameters: {
             query?: never;
