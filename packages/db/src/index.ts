@@ -1,3 +1,4 @@
+export * from './auth-queries.js';
 export * from './client.js';
 export * from './columns.js';
 export * from './migrate.js';

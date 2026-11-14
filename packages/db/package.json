@@ -15,6 +15,11 @@
       "types": "./dist/schema/index.d.ts",
       "default": "./dist/schema/index.js"
     },
+    "./crypto": {
+      "@radd/source": "./src/crypto.ts",
+      "types": "./dist/crypto.d.ts",
+      "default": "./dist/crypto.js"
+    },
     "./testing": {
       "@radd/source": "./src/testing/index.ts",
       "types": "./dist/testing/index.d.ts",
