@@ -1,30 +1,31 @@
 import { expect, expectRequestIds, test } from './fixtures';
 
-test.describe('console home @smoke', () => {
+// `/` redirects to sign-in when signed out, so the public sign-in page carries these checks.
+test.describe('console shell basics @smoke', () => {
   test('defaults to English, left to right', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/sign-in');
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Radd Menu');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in');
   });
 
   test('renders Arabic right to left after switching language', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/sign-in');
     await page.getByRole('button', { name: 'العربية' }).click();
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-    await expect(page.getByText('لوحة التحكم')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('تسجيل الدخول');
 
     // Radix widgets follow the page direction: laid out right to left, and the "next" arrow key
     // in RTL is ArrowLeft.
-    const tabs = page.getByRole('tablist', { name: 'الأقسام' });
+    const tabs = page.getByRole('tablist', { name: 'كيف تريد تسجيل الدخول؟' });
     await expect(tabs).toHaveCSS('direction', 'rtl');
-    await page.getByRole('tab', { name: 'القائمة' }).focus();
+    await page.getByRole('tab', { name: 'كلمة المرور' }).focus();
     await page.keyboard.press('ArrowLeft');
-    await expect(page.getByRole('tab', { name: 'الصالة مباشرة' })).toBeFocused();
+    await expect(page.getByRole('tab', { name: 'رمز بالبريد' })).toBeFocused();
   });
 
   test('the dark-mode switch changes the tokens and survives a reload', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/sign-in');
     const html = page.locator('html');
     // One fixed label; the pressed state says whether dark mode is on.
     const toggle = page.getByRole('button', { name: 'Dark mode' });
@@ -45,7 +46,7 @@ test.describe('console home @smoke', () => {
   });
 
   test('the language switch keeps keyboard focus', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/sign-in');
     const arabic = page.getByRole('button', { name: 'العربية' });
     await arabic.focus();
     await page.keyboard.press('Enter');
@@ -69,7 +70,7 @@ test.describe('console home @smoke', () => {
 
   test('every control is a 44 px tap target at 360 px (UX §9)', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 780 });
-    await page.goto('/');
+    await page.goto('/sign-in');
     for (const control of await page.locator('button, [role=tab]').all()) {
       const box = await control.boundingBox();
       expect(box?.height, (await control.textContent()) ?? '').toBeGreaterThanOrEqual(44);
@@ -92,14 +93,21 @@ test.describe('console home @smoke', () => {
         { name: 'NEXT_LOCALE', value: locale, url: baseURL ?? '' },
         { name: 'radd_console_theme', value: theme, url: baseURL ?? '' },
       ]);
-      await page.goto('/');
+      await page.goto('/sign-in');
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await expectAccessible();
     });
   }
 
   test('tags every response with a request ID', async ({ request }) => {
-    await expectRequestIds(request);
+    await expectRequestIds(request, '/sign-in');
+  });
+
+  test('sends signed-out visitors to sign-in, remembering the page', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/sign-in$/);
+    await page.goto('/team');
+    await expect(page).toHaveURL(/\/sign-in\?next=%2Fteam$/);
   });
 
   test('answers the health check', async ({ request }) => {

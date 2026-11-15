@@ -15,15 +15,20 @@
   "dependencies": {
     "@fontsource-variable/ibm-plex-sans": "5.3.0",
     "@fontsource/ibm-plex-sans-arabic": "5.3.0",
+    "@hookform/resolvers": "7.0.6",
     "@radd/api-client": "workspace:*",
     "@radd/config": "workspace:*",
     "@radd/shared": "workspace:*",
     "@radd/ui": "workspace:*",
     "@sentry/nextjs": "11.8.0",
+    "better-auth": "1.7.18",
     "next": "16.4.2",
     "next-intl": "4.14.9",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "react-hook-form": "7.92.0",
+    "uqr": "0.1.3",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
