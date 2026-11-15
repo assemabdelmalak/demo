@@ -19,6 +19,7 @@ import { HealthModule } from './health/health.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { type IdempotencyOptions } from './idempotency/idempotency.store';
 import { MailModule } from './mail/mail.module';
+import { OrganizationsModule } from './organizations/organizations.module';
 import { QueuesModule } from './queues/queues.module';
 import { ThrottlingModule } from './throttling/throttling.module';
 import { ValkeyModule } from './valkey/valkey.module';
@@ -79,6 +80,7 @@ export class AppModule {
         ThrottlingModule,
         IdempotencyModule.register(options.idempotency),
         AuthModule.register(options.auth),
+        OrganizationsModule,
         HealthModule,
         ...(options.imports ?? []),
       ],

@@ -7,9 +7,15 @@ import { createAccessControl } from 'better-auth/plugins/access';
 import { adminAc, defaultStatements, ownerAc } from 'better-auth/plugins/organization/access';
 import { type Redis } from 'ioredis';
 
-import { type Db, findUserAuthFlags, listUserMemberships, schema } from '@radd/db';
+import {
+  countOwnedOrganizations,
+  type Db,
+  findUserAuthFlags,
+  listUserMemberships,
+  schema,
+} from '@radd/db';
 import { hashPassword, verifyPassword } from '@radd/db/crypto';
-import { uuidv7 } from '@radd/shared';
+import { INVITATION_TTL_DAYS, type NotifyEmailPayload, type UiLocale, uuidv7 } from '@radd/shared';
 
 import { AUTH_CODE_TTL_SECONDS, type AuthCodeType, type AuthMailer } from './auth-mailer';
 import { createValkeyRateLimitStorage } from './auth-rate-limit';
@@ -19,10 +25,13 @@ import {
   cookiePrefixFor,
   crossSubDomainCookieDomain,
   findMalformedId,
+  invitationUrl,
   LOCALE_HEADER,
   parseLocaleHeader,
 } from './auth.utils';
+import { currentRequestLocale } from './request-locale';
 import { type ApiEnv } from '../config/env.module';
+import { MAX_OWNED_ORGANIZATIONS } from '../organizations/organization.rules';
 
 export interface CreateAuthDeps {
   env: ApiEnv;
@@ -30,6 +39,11 @@ export interface CreateAuthDeps {
   mailer: AuthMailer;
   valkey: Redis;
   logger: LoggerService;
+  /**
+   * Puts an email on the `notify.email` queue (the API's `QueueProducer`). Invitations go through
+   * the worker; auth codes never do (ADR-029).
+   */
+  enqueueEmail: (payload: NotifyEmailPayload, jobId: string) => Promise<unknown>;
   /** Better Auth's own limiter (sign-in 3 per 10 s, codes 3 per minute, …). On unless a test turns it off. */
   rateLimit?: boolean;
 }
@@ -96,6 +110,20 @@ function localeOf(ctx: GenericEndpointContext | undefined) {
   return parseLocaleHeader(header);
 }
 
+/** The inviter's console language: from the request when there is one, else the service's scope. */
+function invitationLocale(request: Request | undefined): UiLocale {
+  const header = request?.headers.get(LOCALE_HEADER);
+  return header ? parseLocaleHeader(header) : (currentRequestLocale() ?? parseLocaleHeader(null));
+}
+
+/** Better Auth hands us organisations as loose records; only `status` matters here. */
+function isSuspended(organization: Record<string, unknown>): boolean {
+  return organization.status === 'suspended';
+}
+
+const orgSuspended = () =>
+  APIError.from('FORBIDDEN', { code: 'ORG_SUSPENDED', message: 'Organisation suspended' });
+
 function stringField(body: unknown, key: string): string | undefined {
   if (body === null || typeof body !== 'object') return undefined;
   const value: unknown = (body as Record<string, unknown>)[key];
@@ -118,7 +146,15 @@ function authLogger(logger: LoggerService) {
   };
 }
 
-export function createAuth({ env, db, mailer, valkey, logger, rateLimit = true }: CreateAuthDeps) {
+export function createAuth({
+  env,
+  db,
+  mailer,
+  valkey,
+  logger,
+  enqueueEmail,
+  rateLimit = true,
+}: CreateAuthDeps) {
   const { origin, basePath } = authUrlParts(env.BETTER_AUTH_URL);
   const cookieDomain = crossSubDomainCookieDomain(env.AUTH_COOKIE_DOMAIN);
 
@@ -276,6 +312,47 @@ export function createAuth({ env, db, mailer, valkey, logger, rateLimit = true }
         ac,
         roles: organizationRoles,
         creatorRole: 'owner',
+        // Onboarding goes through `POST /v1/organizations`, which checks the same two rules first
+        // and answers with our problem codes; these are the backstop for any other caller.
+        allowUserToCreateOrganization: (user) => user.emailVerified,
+        organizationLimit: async (user) =>
+          (await countOwnedOrganizations(db, user.id)) >= MAX_OWNED_ORGANIZATIONS,
+        invitationExpiresIn: INVITATION_TTL_DAYS * DAY_SECONDS,
+        // Inviting the same address again replaces the earlier invitation and link.
+        cancelPendingInvitationsOnReInvite: true,
+        // Accepting, rejecting or reading an invitation needs the invited, verified address. Our
+        // custom ID generator already implies this; stated so a config change cannot drop it.
+        requireEmailVerificationOnInvitation: true,
+        sendInvitationEmail: async ({ id, email, role, organization, inviter }, request) => {
+          await enqueueEmail(
+            {
+              template: 'invitation',
+              to: email,
+              locale: invitationLocale(request),
+              params: {
+                organizationName: organization.name,
+                inviterName: inviter.user.name,
+                // Validated by the queue schema: only manager, staff or kitchen get through.
+                role: role as NotifyEmailPayload['params']['role'],
+                url: invitationUrl(env.CONSOLE_PUBLIC_URL, id),
+                days: INVITATION_TTL_DAYS,
+              },
+            },
+            // One email per invitation, even if Better Auth calls us twice for it.
+            `invitation-${id}`,
+          );
+        },
+        organizationHooks: {
+          // A suspended organisation can be read but not joined or grown (ORG_SUSPENDED).
+          beforeCreateInvitation: ({ organization }) => {
+            if (isSuspended(organization)) throw orgSuspended();
+            return Promise.resolve();
+          },
+          beforeAcceptInvitation: ({ organization }) => {
+            if (isSuspended(organization)) throw orgSuspended();
+            return Promise.resolve();
+          },
+        },
         schema: {
           organization: {
             additionalFields: {

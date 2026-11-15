@@ -7,6 +7,7 @@ import {
   cookiePrefixFor,
   crossSubDomainCookieDomain,
   findMalformedId,
+  invitationUrl,
   parseLocaleHeader,
   toAuthClientIp,
 } from './auth.utils';
@@ -89,5 +90,17 @@ describe('findMalformedId', () => {
 
   it('only checks keys that look like IDs', () => {
     expect(findMalformedId({ identifier: 'x', idToken: 'y', valid: 'z' })).toBeUndefined();
+  });
+});
+
+describe('invitationUrl', () => {
+  it('points at the console accept page with or without a trailing slash', () => {
+    const id = uuidv7();
+    expect(invitationUrl('http://localhost:3001', id)).toBe(
+      `http://localhost:3001/accept-invitation/${id}`,
+    );
+    expect(invitationUrl('https://app.raddmenu.com/', id)).toBe(
+      `https://app.raddmenu.com/accept-invitation/${id}`,
+    );
   });
 });

@@ -70,6 +70,18 @@ export class TestBrowser {
     );
   }
 
+  async patch(url: string, payload: unknown = {}, extra?: Record<string, string>) {
+    return this.remember(
+      await this.app.inject({
+        method: 'PATCH',
+        url,
+        payload: payload as Record<string, unknown>,
+        headers: this.headers(extra),
+        remoteAddress: this.options.ip,
+      }),
+    );
+  }
+
   async get(url: string, extra?: Record<string, string>) {
     return this.remember(
       await this.app.inject({

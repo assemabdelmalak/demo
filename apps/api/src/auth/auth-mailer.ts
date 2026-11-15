@@ -2,7 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { type LoggerService } from '@nestjs/common';
 
-import { type EmailTemplate, type Mailer, renderEmail } from '@radd/mail';
+import { emailDomain, type EmailTemplate, type Mailer, redact, renderEmail } from '@radd/mail';
 import { type UiLocale } from '@radd/shared';
 
 /** The code types Better Auth's email-OTP plugin sends. */
@@ -36,12 +36,6 @@ function templateFor(type: AuthCodeType, code: string): EmailTemplate | undefine
       // Email change is not offered (its endpoints are disabled); nothing to send.
       return undefined;
   }
-}
-
-/** Only the domain: enough to spot a failing provider, never enough to identify a person. */
-function emailDomain(address: string): string {
-  const at = address.lastIndexOf('@');
-  return at === -1 ? 'unknown' : address.slice(at + 1).toLowerCase();
 }
 
 /**
@@ -106,8 +100,4 @@ export class AuthMailer {
       error instanceof Error ? { name: error.name, message: redact(error.message, to) } : undefined;
     this.logger.error({ err, template, domain: emailDomain(to) }, `auth email ${what}`);
   }
-}
-
-function redact(text: string, address: string): string {
-  return address ? text.split(address).join('[address]') : text;
 }

@@ -18,6 +18,7 @@ import { MeService } from './me.service';
 import { API_ENV, type ApiEnv } from '../config/env.module';
 import { DB } from '../db/db.module';
 import { MAILER } from '../mail/mail.module';
+import { QueueProducer } from '../queues/queue-producer';
 import { VALKEY } from '../valkey/valkey.module';
 
 /** The Better Auth instance (`Auth` from `auth.config.ts`). */
@@ -44,6 +45,8 @@ export class AuthModule implements BeforeApplicationShutdown {
     };
     return {
       module: AuthModule,
+      // The Better Auth instance is needed by every module that wraps its endpoints.
+      global: true,
       controllers: [MeController],
       providers: [
         MeService,
@@ -65,14 +68,21 @@ export class AuthModule implements BeforeApplicationShutdown {
         },
         {
           provide: AUTH,
-          inject: [API_ENV, DB, AuthMailer, VALKEY],
-          useFactory: (env: ApiEnv, handle: DbHandle, mailer: AuthMailer, valkey: Redis) =>
+          inject: [API_ENV, DB, AuthMailer, VALKEY, QueueProducer],
+          useFactory: (
+            env: ApiEnv,
+            handle: DbHandle,
+            mailer: AuthMailer,
+            valkey: Redis,
+            queue: QueueProducer,
+          ) =>
             createAuth({
               env,
               db: handle.db,
               mailer,
               valkey,
               logger: new Logger('BetterAuth'),
+              enqueueEmail: (payload, jobId) => queue.enqueue('notify.email', payload, { jobId }),
               rateLimit: resolved.rateLimit,
             }),
         },

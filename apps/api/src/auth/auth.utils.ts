@@ -81,3 +81,9 @@ export function findMalformedId(input: unknown, depth = 0): string | undefined {
   }
   return undefined;
 }
+
+/** The console page that answers an invitation (`/accept-invitation/<id>`). */
+export function invitationUrl(consolePublicUrl: string, invitationId: string): string {
+  const base = consolePublicUrl.endsWith('/') ? consolePublicUrl : `${consolePublicUrl}/`;
+  return new URL(`accept-invitation/${encodeURIComponent(invitationId)}`, base).toString();
+}
