@@ -29,6 +29,11 @@
       "@radd/source": "./src/dto/index.ts",
       "types": "./dist/dto/index.d.ts",
       "default": "./dist/dto/index.js"
+    },
+    "./permissions": {
+      "@radd/source": "./src/permissions.ts",
+      "types": "./dist/permissions.d.ts",
+      "default": "./dist/permissions.js"
     }
   },
   "files": [

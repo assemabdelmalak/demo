@@ -2,3 +2,4 @@
 export * from './auth.js';
 export * from './invitations.js';
 export * from './organizations.js';
+export * from './restaurants.js';

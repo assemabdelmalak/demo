@@ -6,6 +6,7 @@ import {
   listMembersQuerySchema,
   updateOrganizationSchema,
 } from './organizations.js';
+import { createRestaurantSchema, listRestaurantsQuerySchema } from './restaurants.js';
 
 describe('organisation DTOs', () => {
   it('trims the name and refuses empty, long or multi-line names', () => {
@@ -62,5 +63,40 @@ describe('invitation DTO', () => {
       createInvitationSchema.safeParse({ email: 'a@b.co', role: 'staff', organizationId: 'x' })
         .success,
     ).toBe(false);
+  });
+});
+
+describe('restaurant DTOs', () => {
+  it('accepts a localised name and a lower-case slug', () => {
+    expect(
+      createRestaurantSchema.parse({
+        name: { en: ' Beit Tayta ', ar: 'بيت تيتا' },
+        slug: ' Beit-Tayta ',
+      }),
+    ).toEqual({ name: { en: 'Beit Tayta', ar: 'بيت تيتا' }, slug: 'beit-tayta' });
+  });
+
+  it('refuses bad slugs, empty names and extra fields', () => {
+    for (const slug of ['ab', 'x'.repeat(49), 'beit tayta', 'بيت', 'a_b', '']) {
+      expect(createRestaurantSchema.safeParse({ name: { en: 'A' }, slug }).success, slug).toBe(
+        false,
+      );
+    }
+    for (const name of [{}, { en: '' }, { eng: 'A' }, 'Beit']) {
+      expect(createRestaurantSchema.safeParse({ name, slug: 'abc' }).success).toBe(false);
+    }
+    expect(
+      createRestaurantSchema.safeParse({ name: { en: 'A' }, slug: 'abc', status: 'live' }).success,
+    ).toBe(false);
+    expect(
+      createRestaurantSchema.safeParse({ name: { en: 'A' }, slug: 'abc', organizationId: 'x' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('pages with a UUID cursor and a bounded limit', () => {
+    expect(listRestaurantsQuerySchema.parse({})).toEqual({ limit: 50 });
+    expect(listRestaurantsQuerySchema.safeParse({ limit: '101' }).success).toBe(false);
+    expect(listRestaurantsQuerySchema.safeParse({ cursor: 'nope' }).success).toBe(false);
   });
 });
