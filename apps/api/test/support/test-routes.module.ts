@@ -6,8 +6,11 @@ import { type FastifyReply } from 'fastify';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-import { DomainError, uuidv7 } from '@radd/shared';
+import { RestaurantsRepository } from '@radd/db';
+import { DomainError, type MemberActor, uuidv7 } from '@radd/shared';
 
+import { CurrentActor, Public, RequirePermission } from '../../src/authz/access.decorators';
+import { RequestContext } from '../../src/authz/request-context';
 import { Idempotent } from '../../src/idempotency/idempotent.decorator';
 
 class ItemParams extends createZodDto(z.object({ id: z.string().min(1).max(100) })) {}
@@ -28,6 +31,7 @@ export const calls = {
 };
 
 /** Routes that exist only in tests; never registered by `main.ts`. */
+@Public()
 @Controller('__test')
 class TestController {
   @Get('domain-error')
@@ -126,5 +130,68 @@ class TestController {
   }
 }
 
-@Module({ controllers: [TestController] })
+class SlugBody extends createZodDto(z.object({ slug: z.string().min(3).max(48) })) {}
+class RestaurantParam extends createZodDto(z.object({ rid: z.uuid() })) {}
+
+/** Declares no access policy: the default-deny guard must refuse every route here. */
+@Controller('__test/undeclared')
+class UndeclaredController {
+  @Get()
+  open() {
+    return { leaked: true };
+  }
+
+  /** Refused requests must still count against rate limits. */
+  @Get('limited')
+  @Throttle({ default: { limit: 3, ttl: 2_000 } })
+  limited() {
+    return { leaked: true };
+  }
+}
+
+/** Tenant-scoped routes that expose the plumbing: the context and the transaction. */
+@Controller('__test/tenant')
+class TenantTestController {
+  constructor(
+    private readonly context: RequestContext,
+    private readonly restaurants: RestaurantsRepository,
+  ) {}
+
+  /** Writes a restaurant in the request transaction, then fails: the write must roll back. */
+  @Post('write-then-throw')
+  @RequirePermission('restaurant.create')
+  async writeThenThrow(@Body() body: SlugBody): Promise<never> {
+    const row = await this.restaurants.create({ name: { en: 'Rolled back' }, slug: body.slug });
+    throw new DomainError('CONFLICT', { detail: `wrote ${row?.id ?? 'nothing'}, then failed` });
+  }
+
+  /** What services see through `RequestContext`. */
+  @Get('context')
+  @RequirePermission('restaurant.read')
+  current(@CurrentActor() actor: MemberActor) {
+    return {
+      actor,
+      organizationId: this.context.organizationId ?? null,
+      restaurantId: this.context.restaurantId ?? null,
+      requestId: this.context.requestId ?? null,
+      sameActor: this.context.actor.userId === actor.userId,
+    };
+  }
+
+  /** The tenant of a restaurant-scoped route is the restaurant's organisation. */
+  @Get('restaurants/:rid')
+  @RequirePermission('restaurant.read')
+  restaurant(@Param() params: RestaurantParam) {
+    return {
+      organizationId: this.context.organizationId ?? null,
+      restaurantId: this.context.restaurantId ?? null,
+      rid: params.rid,
+    };
+  }
+}
+
+@Module({
+  controllers: [TestController, UndeclaredController, TenantTestController],
+  providers: [{ provide: RestaurantsRepository, useValue: new RestaurantsRepository() }],
+})
 export class TestRoutesModule {}

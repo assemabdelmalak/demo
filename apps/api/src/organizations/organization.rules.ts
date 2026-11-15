@@ -1,8 +1,8 @@
-import { DomainError, type InvitableRole, type MemberRole } from '@radd/shared';
+import { DomainError } from '@radd/shared';
 
-// Who may do what with organisations, members and invitations. One function per rule, each
-// throwing a problem code, so the permission layer of P1-T05 (`assertCan` over the matrix in
-// packages/shared/permissions.ts) can replace them one by one.
+// Organisation rules that are not role permissions: the onboarding limit, PIN sessions and
+// suspension. Who may do what by role is `assertCan` over the matrix in
+// packages/shared/src/permissions.ts (ADR-025).
 
 /** Onboarding limit: one person runs at most this many organisations (as owner). */
 export const MAX_OWNED_ORGANIZATIONS = 3;
@@ -27,34 +27,6 @@ export function assertCanCreateOrganization(actor: RuleActor, ownedCount: number
     throw new DomainError('ORG_LIMIT_REACHED', {
       detail: `A person can own at most ${String(MAX_OWNED_ORGANIZATIONS)} organisations`,
     });
-  }
-}
-
-/** Reads of the organisation and its member list: any member. */
-export function assertIsMember(role: MemberRole | undefined): asserts role is MemberRole {
-  if (role === undefined) throw new DomainError('NOT_A_MEMBER');
-}
-
-/** Renaming the organisation: owner or manager. */
-export function assertCanUpdateOrganization(role: MemberRole): void {
-  if (role !== 'owner' && role !== 'manager') throw new DomainError('FORBIDDEN');
-}
-
-/** Which roles each role may invite. Owners are never invited; managing managers is owner-only. */
-const INVITABLE_BY: Record<MemberRole, readonly InvitableRole[]> = {
-  owner: ['manager', 'staff', 'kitchen'],
-  manager: ['staff', 'kitchen'],
-  staff: [],
-  kitchen: [],
-};
-
-export function canInvite(inviter: MemberRole, invited: string): boolean {
-  return (INVITABLE_BY[inviter] as readonly string[]).includes(invited);
-}
-
-export function assertCanInvite(inviter: MemberRole, invited: string): void {
-  if (!canInvite(inviter, invited)) {
-    throw new DomainError('FORBIDDEN', { detail: `A ${inviter} cannot invite a ${invited}` });
   }
 }
 

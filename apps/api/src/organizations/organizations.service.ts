@@ -3,28 +3,22 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   countOwnedOrganizations,
   type DbHandle,
-  findMemberRole,
   findOrganization,
   listOrganizationMembers,
   type OrganizationRow,
   organizationSlugExists,
 } from '@radd/db';
 import {
+  assertCan,
   DomainError,
   type ListMembersQuery,
+  type MemberActor,
   type MemberList,
-  type MemberRole,
   type OrganizationView,
   organizationSchema,
 } from '@radd/shared';
 
-import {
-  assertAccountSession,
-  assertCanCreateOrganization,
-  assertCanUpdateOrganization,
-  assertIsMember,
-  assertOrganizationWritable,
-} from './organization.rules';
+import { assertCanCreateOrganization, assertOrganizationWritable } from './organization.rules';
 import { slugCandidates } from './slug';
 import { recordAuditLater } from '../audit/audit.seam';
 import { authErrorCode, toDomainError } from '../auth/auth-errors';
@@ -32,12 +26,6 @@ import { type AuthSession } from '../auth/auth-session';
 import { type Auth } from '../auth/auth.config';
 import { AUTH } from '../auth/auth.module';
 import { DB } from '../db/db.module';
-
-/** The session's active organisation and the caller's role in it. */
-export interface CurrentOrganization {
-  organization: OrganizationRow;
-  role: MemberRole;
-}
 
 export function toOrganizationView(row: OrganizationRow): OrganizationView {
   return organizationSchema.parse({ ...row, createdAt: row.createdAt.toISOString() });
@@ -56,17 +44,13 @@ export class OrganizationsService {
   ) {}
 
   /**
-   * "Current" is the session's active organisation: 404 when none is set, 403 NOT_A_MEMBER when
-   * the user no longer belongs to it.
+   * "Current" is the organisation the guard resolved for the request: the session's active one,
+   * whose membership `AuthzGuard` has checked (404 without one, 403 NOT_A_MEMBER outside it).
    */
-  async current(session: AuthSession): Promise<CurrentOrganization> {
-    const organizationId = session.activeOrganizationId;
-    if (!organizationId) throw new DomainError('NOT_FOUND', { detail: 'No active organisation' });
-    const organization = await findOrganization(this.handle.db, organizationId);
+  async current(actor: MemberActor): Promise<OrganizationRow> {
+    const organization = await findOrganization(this.handle.db, actor.organizationId);
     if (!organization) throw new DomainError('NOT_FOUND', { detail: 'No active organisation' });
-    const role = await findMemberRole(this.handle.db, organizationId, session.userId);
-    assertIsMember(role);
-    return { organization, role };
+    return organization;
   }
 
   /** Onboarding step 0: the caller becomes owner and the new organisation becomes active. */
@@ -103,16 +87,16 @@ export class OrganizationsService {
     throw new DomainError('CONFLICT', { detail: 'Could not find a free organisation slug' });
   }
 
-  async read(session: AuthSession): Promise<OrganizationView> {
-    const { organization } = await this.current(session);
-    return toOrganizationView(organization);
+  async read(actor: MemberActor): Promise<OrganizationView> {
+    assertCan(actor, 'org.read');
+    return toOrganizationView(await this.current(actor));
   }
 
   /** Renames the current organisation. Only the name: everything else is server-owned. */
-  async update(session: AuthSession, name: string, headers: Headers): Promise<OrganizationView> {
-    assertAccountSession(session);
-    const { organization, role } = await this.current(session);
-    assertCanUpdateOrganization(role);
+  async update(actor: MemberActor, name: string, headers: Headers): Promise<OrganizationView> {
+    // A PIN session never holds `org.*` (ADR-026), so this also refuses account changes there.
+    assertCan(actor, 'org.update');
+    const organization = await this.current(actor);
     assertOrganizationWritable(organization);
     try {
       await this.auth.api.updateOrganization({
@@ -137,8 +121,9 @@ export class OrganizationsService {
   }
 
   /** Any member may list the team. The PIN hash is never read. */
-  async members(session: AuthSession, query: ListMembersQuery): Promise<MemberList> {
-    const { organization } = await this.current(session);
+  async members(actor: MemberActor, query: ListMembersQuery): Promise<MemberList> {
+    assertCan(actor, 'team.read');
+    const organization = await this.current(actor);
     const { items, hasMore } = await listOrganizationMembers(
       this.handle.db,
       organization.id,

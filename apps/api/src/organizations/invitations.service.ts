@@ -1,21 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import {
+  assertCan,
   type CreateInvitationInput,
   type InvitationView,
   invitationSchema,
+  inviteActionFor,
+  type MemberActor,
   type UiLocale,
 } from '@radd/shared';
 
-import {
-  assertAccountSession,
-  assertCanInvite,
-  assertOrganizationWritable,
-} from './organization.rules';
+import { assertOrganizationWritable } from './organization.rules';
 import { OrganizationsService } from './organizations.service';
 import { recordAuditLater } from '../audit/audit.seam';
 import { toDomainError } from '../auth/auth-errors';
-import { type AuthSession } from '../auth/auth-session';
 import { type Auth } from '../auth/auth.config';
 import { AUTH } from '../auth/auth.module';
 import { runWithRequestLocale } from '../auth/request-locale';
@@ -34,14 +32,15 @@ export class InvitationsService {
   ) {}
 
   async create(
-    session: AuthSession,
+    actor: MemberActor,
     input: CreateInvitationInput,
     headers: Headers,
     locale: UiLocale,
   ): Promise<InvitationView> {
-    assertAccountSession(session);
-    const { organization, role } = await this.organizations.current(session);
-    assertCanInvite(role, input.role);
+    // Managers invite staff and kitchen; only the owner invites managers (ADR-025). Better Auth's
+    // own check would let a manager invite a manager, which is why its endpoint is disabled.
+    assertCan(actor, inviteActionFor(input.role));
+    const organization = await this.organizations.current(actor);
     assertOrganizationWritable(organization);
 
     let invitation: Awaited<ReturnType<Auth['api']['createInvitation']>>;

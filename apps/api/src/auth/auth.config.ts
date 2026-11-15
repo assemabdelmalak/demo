@@ -52,9 +52,10 @@ const DAY_SECONDS = 24 * 60 * 60;
 
 /**
  * Organisation roles (DATA_MODEL `member_role`). Better Auth's statements only govern its own
- * organisation endpoints, which matter for invitations: owners keep its owner statements, managers
- * its admin statements, and staff and kitchen none. What anyone may do in the product is decided
- * by `packages/shared/permissions.ts` (P1-T05), not here.
+ * organisation endpoints, which matter for the calls our services delegate (invitations, renames):
+ * owners keep its owner statements, managers its admin statements, and staff and kitchen none.
+ * What anyone may do in the product is decided by `packages/shared/src/permissions.ts`
+ * (ADR-025), which our wrappers check first; `auth-roles.test.ts` fails if the two drift.
  */
 const ac = createAccessControl(defaultStatements);
 export const organizationRoles = {

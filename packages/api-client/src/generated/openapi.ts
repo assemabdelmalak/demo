@@ -84,6 +84,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/restaurants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["RestaurantsController_list"];
+        put?: never;
+        post: operations["RestaurantsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/restaurants/{rid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["RestaurantsController_read"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/health/live": {
         parameters: {
             query?: never;
@@ -205,6 +237,51 @@ export interface components {
             expiresAt: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        CreateRestaurantDto: {
+            name: {
+                en?: string;
+                ar?: string;
+                fr?: string;
+            };
+            slug: string;
+        };
+        RestaurantDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            slug: string;
+            name: {
+                [key: string]: string;
+            };
+            /** @enum {string} */
+            status: "draft" | "live" | "suspended";
+            /** @enum {string} */
+            defaultLocale: "en" | "ar" | "fr";
+            timezone: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RestaurantListDto: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                organizationId: string;
+                slug: string;
+                name: {
+                    [key: string]: string;
+                };
+                /** @enum {string} */
+                status: "draft" | "live" | "suspended";
+                /** @enum {string} */
+                defaultLocale: "en" | "ar" | "fr";
+                timezone: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            nextCursor: string | null;
         };
         HealthLiveDto: {
             /** @constant */
@@ -426,6 +503,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvitationDto"];
+                };
+            };
+            /** @description Error (RFC 9457 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RestaurantsController_list: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestaurantListDto"];
+                };
+            };
+            /** @description Error (RFC 9457 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RestaurantsController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRestaurantDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestaurantDto"];
+                };
+            };
+            /** @description Error (RFC 9457 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RestaurantsController_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestaurantDto"];
                 };
             };
             /** @description Error (RFC 9457 problem details) */

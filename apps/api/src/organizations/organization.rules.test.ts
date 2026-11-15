@@ -1,17 +1,44 @@
 import { describe, expect, it } from 'vitest';
 
-import { DomainError, MEMBER_ROLES } from '@radd/shared';
+import {
+  assertCan,
+  can,
+  DomainError,
+  INVITABLE_ROLES,
+  type InvitableRole,
+  inviteActionFor,
+  MEMBER_ROLES,
+  type MemberActor,
+  type MemberRole,
+} from '@radd/shared';
 
 import {
   assertAccountSession,
   assertCanCreateOrganization,
-  assertCanInvite,
-  assertCanUpdateOrganization,
-  assertIsMember,
   assertOrganizationWritable,
-  canInvite,
   MAX_OWNED_ORGANIZATIONS,
 } from './organization.rules';
+
+const member = (role: MemberRole): MemberActor => ({
+  kind: 'member',
+  userId: '0190a000-0000-7000-8000-000000000002',
+  organizationId: '0190a000-0000-7000-8000-000000000001',
+  role,
+  pinSession: false,
+});
+
+/** How `InvitationsService` decides: an unknown role is never invitable (the DTO refuses it too). */
+function canInvite(inviter: MemberRole, invited: string): boolean {
+  if (!(INVITABLE_ROLES as readonly string[]).includes(invited)) return false;
+  return can(member(inviter), inviteActionFor(invited as InvitableRole));
+}
+
+function assertCanInvite(inviter: MemberRole, invited: string): void {
+  if (!(INVITABLE_ROLES as readonly string[]).includes(invited)) {
+    throw new DomainError('FORBIDDEN');
+  }
+  assertCan(member(inviter), inviteActionFor(invited as InvitableRole));
+}
 
 const actor = { emailVerified: true, pinSession: false };
 
@@ -67,39 +94,32 @@ describe('organisation rules', () => {
     ).toBe('FORBIDDEN');
   });
 
-  it('lets any member read and only members', () => {
-    for (const role of MEMBER_ROLES)
-      expect(
-        codeOf(() => {
-          assertIsMember(role);
-        }),
-      ).toBeUndefined();
-    expect(
-      codeOf(() => {
-        assertIsMember(undefined);
-      }),
-    ).toBe('NOT_A_MEMBER');
+  it('lets any member read the organisation and its team', () => {
+    for (const role of MEMBER_ROLES) {
+      expect(can(member(role), 'org.read')).toBe(true);
+      expect(can(member(role), 'team.read')).toBe(true);
+    }
   });
 
   it('lets owners and managers rename the organisation', () => {
     expect(
       codeOf(() => {
-        assertCanUpdateOrganization('owner');
+        assertCan(member('owner'), 'org.update');
       }),
     ).toBeUndefined();
     expect(
       codeOf(() => {
-        assertCanUpdateOrganization('manager');
+        assertCan(member('manager'), 'org.update');
       }),
     ).toBeUndefined();
     expect(
       codeOf(() => {
-        assertCanUpdateOrganization('staff');
+        assertCan(member('staff'), 'org.update');
       }),
     ).toBe('FORBIDDEN');
     expect(
       codeOf(() => {
-        assertCanUpdateOrganization('kitchen');
+        assertCan(member('kitchen'), 'org.update');
       }),
     ).toBe('FORBIDDEN');
   });

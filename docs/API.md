@@ -65,7 +65,10 @@
 
 ## 4. Console endpoints — `/v1` (authenticated)
 
-Every route under `/restaurants/{rid}` checks membership of the restaurant's organisation and the required role (see `packages/shared/permissions.ts`).
+Every route declares its access policy: a permission action from `packages/shared/src/permissions.ts`, "any signed-in user" or public. A route without one is refused (ADR-024).
+- Routes under `/restaurants/{rid}` act in the restaurant's organisation: the caller must be a member of it. A restaurant that does not exist, is deleted or belongs to an organisation the caller is not in answers `404 NOT_FOUND`, so IDs cannot be probed.
+- Other routes act in the session's active organisation: `404 NOT_FOUND` without one, `403 NOT_A_MEMBER` when the caller no longer belongs to it.
+- A role without the action gets `403 FORBIDDEN`; a mutation in a suspended organisation gets `403 ORG_SUSPENDED`. Services check the same rules again with the target (`assertCan`).
 
 **Organisation and restaurants**
 - `GET /me`
@@ -142,7 +145,7 @@ Every route under `/restaurants/{rid}` checks membership of the restaurant's org
 - `POST /waiter-calls/{id}/resolve`
 - `POST /sessions/{sid}/transfer` with `{ toTableId }`
 - `POST /sessions/{sid}/merge` with `{ otherSessionId }` (manager)
-- `POST /sessions/{sid}/reopen` (manager)
+- `POST /sessions/{sid}/reopen` (staff for a `bill_requested` session; manager for a closed one, GROUP_ORDERING §3.1 and E10)
 
 **Bills and payments**
 - `GET /sessions/{sid}/bill?mode=`

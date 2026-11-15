@@ -1,11 +1,10 @@
-import { Controller, Get, Req } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { type FastifyRequest } from 'fastify';
 
-import { DomainError } from '@radd/shared';
-
+import { type AuthSession } from './auth-session';
 import { type Me, MeDto } from './me.dto';
 import { MeService } from './me.service';
+import { AuthenticatedOnly, CurrentSession } from '../authz/access.decorators';
 
 @ApiTags('auth')
 @Controller('me')
@@ -14,9 +13,9 @@ export class MeController {
 
   /** The signed-in user, the current session and the organisations they belong to. */
   @Get()
+  @AuthenticatedOnly()
   @ApiOkResponse({ type: MeDto })
-  me(@Req() request: FastifyRequest): Promise<Me> {
-    if (!request.authSession) throw new DomainError('UNAUTHENTICATED');
-    return this.service.me(request.authSession);
+  me(@CurrentSession() session: AuthSession): Promise<Me> {
+    return this.service.me(session);
   }
 }
