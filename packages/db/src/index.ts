@@ -1,5 +1,7 @@
 export * from './auth-queries.js';
 export * from './organization-queries.js';
+export * from './restaurant-queries.js';
+export * from './repositories/restaurants.js';
 export * from './client.js';
 export * from './columns.js';
 export * from './migrate.js';
