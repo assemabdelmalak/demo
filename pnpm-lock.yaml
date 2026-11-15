@@ -298,6 +298,9 @@ importers:
       '@radd/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@radd/mail':
+        specifier: workspace:*
+        version: link:../../packages/mail
       '@radd/shared':
         specifier: workspace:*
         version: link:../../packages/shared

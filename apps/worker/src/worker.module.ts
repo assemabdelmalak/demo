@@ -4,22 +4,30 @@ import { type Redis } from 'ioredis';
 import { LoggerModule } from 'nestjs-pino';
 
 import { loggerOptions } from '@radd/config/logging';
+import { type Mailer } from '@radd/mail';
 import { DEFAULT_JOB_OPTIONS, QUEUE_PREFIX } from '@radd/shared';
 
 import { EnvModule, type WorkerEnv } from './config/env.module';
 import { HeartbeatService } from './health/heartbeat.service';
 import { ProbeServer } from './health/probe.server';
+import { MailModule } from './mail/mail.module';
 import { NoopProcessor } from './processors/noop.processor';
+import { NotifyEmailProcessor } from './processors/notify-email.processor';
 import { createWorkerConnection, WORKER_VALKEY } from './valkey';
 
 /** Queues that have a processor in this phase; the rest gain one as their features land. */
-const PROCESSED_QUEUES = ['noop'] as const;
+const PROCESSED_QUEUES = ['noop', 'notify.email'] as const;
+
+export interface WorkerModuleOptions {
+  /** Replaces the configured mail adapter, e.g. with a `MemoryMailer` in tests. */
+  mailer?: Mailer;
+}
 
 @Module({})
 export class WorkerModule implements OnApplicationShutdown {
   constructor(@Inject(WORKER_VALKEY) private readonly valkey: Redis) {}
 
-  static register(env: WorkerEnv): DynamicModule {
+  static register(env: WorkerEnv, options: WorkerModuleOptions = {}): DynamicModule {
     return {
       module: WorkerModule,
       imports: [
@@ -38,6 +46,7 @@ export class WorkerModule implements OnApplicationShutdown {
           defaultJobOptions: DEFAULT_JOB_OPTIONS,
         }),
         ...PROCESSED_QUEUES.map((name) => BullModule.registerQueue({ name })),
+        MailModule.register(options.mailer),
       ],
       providers: [
         {
@@ -47,6 +56,7 @@ export class WorkerModule implements OnApplicationShutdown {
         HeartbeatService,
         ProbeServer,
         NoopProcessor,
+        NotifyEmailProcessor,
       ],
       exports: [HeartbeatService, ProbeServer],
     };
