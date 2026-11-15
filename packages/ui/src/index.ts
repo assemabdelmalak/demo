@@ -22,10 +22,23 @@ export {
   type RestaurantTheme,
 } from './theme/restaurant-theme.js';
 export { ThemeProvider, type ThemeProviderProps } from './theme/theme-provider.js';
+export { Alert, type AlertProps, type AlertTone } from './components/alert.js';
 export { Avatar, initials, type AvatarProps } from './components/avatar.js';
 export { Button, buttonVariants, type ButtonProps } from './components/button.js';
 export { Chip, type ChipProps } from './components/chip.js';
 export { DirectionProvider } from './components/direction-provider.js';
+export {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './components/dropdown-menu.js';
+export { Field, type FieldControlProps, type FieldProps } from './components/field.js';
+export { Input, inputClasses } from './components/input.js';
+export { Label } from './components/label.js';
+export { normalizeCode, OtpInput, type OtpInputProps } from './components/otp-input.js';
 export { Price, type PriceProps } from './components/price.js';
 export {
   Sheet,

@@ -53,6 +53,8 @@
   --primary: var(--console-primary);
   --on-primary: var(--console-primary-foreground);
   --line: var(--border);
+  /* #b42318 on the dark background is below AA; error text uses the lighter destructive red. */
+  --danger-text: var(--destructive);
 }
 
 @theme inline {

@@ -17,6 +17,8 @@
   --warning: #a15c00;
   --danger: #b42318;
   --info: #1d5fa8;
+  /* Danger as text on the surface: the console's dark set lightens it to keep AA contrast. */
+  --danger-text: var(--danger);
   --allergen-contains: #b42318;
   --allergen-may-contain: #a15c00;
   --allergen-free: #1e7a46;
@@ -44,6 +46,7 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-info: var(--info);
+  --color-danger-text: var(--danger-text);
   --color-allergen-contains: var(--allergen-contains);
   --color-allergen-may-contain: var(--allergen-may-contain);
   --color-allergen-free: var(--allergen-free);
