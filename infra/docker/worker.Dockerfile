@@ -17,6 +17,8 @@ RUN pnpm dlx turbo@2.11.9 prune @radd/worker --docker
 
 FROM base AS build
 COPY --from=prune /repo/out/json/ .
+# The lockfile records this file's checksum; a frozen install fails without it.
+COPY --from=prune /repo/.pnpmfile.cjs .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
 COPY --from=prune /repo/out/full/ .
 RUN pnpm turbo run build --filter=@radd/worker
