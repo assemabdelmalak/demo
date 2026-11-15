@@ -29,7 +29,7 @@ describe('renderEmail', () => {
         name: 'invitation',
         organizationName: 'Beit Tayta',
         inviterName: 'Rania',
-        roleLabel: 'staff',
+        role: 'staff',
         url: 'http://localhost:3001/accept-invitation/abc',
         days: 2,
       },
@@ -42,13 +42,27 @@ describe('renderEmail', () => {
     }
   });
 
+  it("names the role in the reader's language", () => {
+    const invitation = {
+      name: 'invitation',
+      organizationName: 'Beit Tayta',
+      inviterName: 'Rania',
+      role: 'kitchen',
+      url: 'http://localhost:3001/accept-invitation/abc',
+      days: 7,
+    } as const;
+    expect(renderEmail(invitation, 'en').text).toContain('as kitchen.');
+    expect(renderEmail(invitation, 'ar').text).toContain('بصفة مطبخ.');
+    expect(renderEmail(invitation, 'ar').html).toContain('dir="rtl"');
+  });
+
   it('never turns a name into markup', () => {
     const mail = renderEmail(
       {
         name: 'invitation',
         organizationName: '<img src=x onerror=alert(1)>',
         inviterName: 'Rania "R" & co',
-        roleLabel: 'manager',
+        role: 'manager',
         url: 'http://localhost:3001/accept-invitation/abc?x="y"',
         days: 2,
       },

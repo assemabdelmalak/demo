@@ -1,4 +1,4 @@
-import { dirFor, type UiLocale } from '@radd/shared';
+import { dirFor, type InvitableRole, type UiLocale } from '@radd/shared';
 
 import { type MailMessage } from './mailer.js';
 
@@ -11,7 +11,7 @@ export type EmailTemplate =
       name: 'invitation';
       organizationName: string;
       inviterName: string;
-      roleLabel: string;
+      role: InvitableRole;
       url: string;
       days: number;
     };
@@ -24,6 +24,12 @@ interface Copy {
 }
 
 const PRODUCT = 'Radd Menu';
+
+/** Role names as the console shows them (the same words as its message catalogues). */
+const ROLE_LABELS: Record<UiLocale, Record<InvitableRole, string>> = {
+  en: { manager: 'manager', staff: 'staff', kitchen: 'kitchen' },
+  ar: { manager: 'مدير', staff: 'موظف خدمة', kitchen: 'مطبخ' },
+};
 
 function copyFor(template: EmailTemplate, locale: UiLocale): Copy {
   const ar = locale === 'ar';
@@ -82,12 +88,13 @@ function copyFor(template: EmailTemplate, locale: UiLocale): Copy {
             ],
             highlight: template.code,
           };
-    case 'invitation':
+    case 'invitation': {
+      const roleLabel = ROLE_LABELS[locale][template.role];
       return ar
         ? {
             subject: `${template.inviterName} يدعوك للانضمام إلى ${template.organizationName} على ${PRODUCT}`,
             lines: [
-              `${template.inviterName} يدعوك للانضمام إلى ${template.organizationName} بصفة ${template.roleLabel}.`,
+              `${template.inviterName} يدعوك للانضمام إلى ${template.organizationName} بصفة ${roleLabel}.`,
               `افتح هذا الرابط لقبول الدعوة. تنتهي صلاحيته خلال ${String(template.days)} أيام.`,
               'إذا لم تكن تتوقع هذه الدعوة، تجاهل هذه الرسالة.',
             ],
@@ -96,12 +103,13 @@ function copyFor(template: EmailTemplate, locale: UiLocale): Copy {
         : {
             subject: `${template.inviterName} invited you to ${template.organizationName} on ${PRODUCT}`,
             lines: [
-              `${template.inviterName} invited you to join ${template.organizationName} as ${template.roleLabel}.`,
+              `${template.inviterName} invited you to join ${template.organizationName} as ${roleLabel}.`,
               `Open this link to accept. It expires in ${String(template.days)} days.`,
               'If you were not expecting this invitation, ignore this email.',
             ],
             highlight: template.url,
           };
+    }
   }
 }
 
