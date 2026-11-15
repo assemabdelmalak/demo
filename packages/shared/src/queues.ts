@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+import { INVITABLE_ROLES } from './dto/invitations.js';
+import { UI_LOCALES } from './i18n.js';
+
 /**
  * Payload of a queue whose producer has not been built yet. Enqueueing to it fails validation, so
  * nothing can be scheduled before its phase defines the real schema.
@@ -14,6 +17,33 @@ export const noopPayloadSchema = z.object({
   /** Simulated work, to exercise graceful shutdown. */
   delayMs: z.number().int().min(0).max(10_000).default(0),
 });
+
+/** How long an invitation link stays valid (the organisation plugin's `invitationExpiresIn`). */
+export const INVITATION_TTL_DAYS = 7;
+
+/**
+ * Invitation email (ADR-029). It carries the invitation link and the names shown in the message,
+ * never a sign-in or reset code: those are sent by the API directly so a live code never waits in
+ * Valkey. Strict, so a stray field (a code, a token) fails validation instead of being stored.
+ */
+export const invitationEmailJobSchema = z.strictObject({
+  template: z.literal('invitation'),
+  to: z.email().max(254),
+  locale: z.enum(UI_LOCALES),
+  params: z.strictObject({
+    organizationName: z.string().min(1).max(200),
+    inviterName: z.string().min(1).max(200),
+    role: z.enum(INVITABLE_ROLES),
+    url: z.url({ protocol: /^https?$/ }).max(2_048),
+    days: z.int().min(1).max(30),
+  }),
+});
+
+/** `notify.email`: one variant per template sent through the queue. */
+export const notifyEmailPayloadSchema = z.discriminatedUnion('template', [
+  invitationEmailJobSchema,
+]);
+export type NotifyEmailPayload = z.infer<typeof notifyEmailPayloadSchema>;
 
 interface QueueSpec<S extends z.ZodType> {
   concurrency: number;
@@ -80,7 +110,11 @@ export const QUEUES = {
     payload: notYetDefined,
     description: 'Monday report generation and delivery',
   }),
-  'notify.email': queue({ concurrency: 4, payload: notYetDefined, description: 'outbound email' }),
+  'notify.email': queue({
+    concurrency: 4,
+    payload: notifyEmailPayloadSchema,
+    description: 'outbound email (invitations; auth codes are sent by the API, ADR-029)',
+  }),
   'notify.whatsapp': queue({
     concurrency: 2,
     payload: notYetDefined,

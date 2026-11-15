@@ -18,6 +18,11 @@ describe('ERROR_CATALOGUE', () => {
     expect(ERROR_CATALOGUE.TABLE_INACTIVE.status).toBe(410);
     expect(ERROR_CATALOGUE.SESSION_CLOSED.status).toBe(410);
     expect(ERROR_CATALOGUE.PRICE_CHANGED.status).toBe(409);
+    expect(ERROR_CATALOGUE.EMAIL_NOT_VERIFIED.status).toBe(403);
+    expect(ERROR_CATALOGUE.NOT_A_MEMBER.status).toBe(403);
+    expect(ERROR_CATALOGUE.ORG_SUSPENDED.status).toBe(403);
+    expect(ERROR_CATALOGUE.ORG_LIMIT_REACHED.status).toBe(409);
+    expect(ERROR_CATALOGUE.ALREADY_A_MEMBER.status).toBe(409);
   });
 });
 

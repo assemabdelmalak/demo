@@ -24,6 +24,11 @@
       "@radd/source": "./src/node.ts",
       "types": "./dist/node.d.ts",
       "default": "./dist/node.js"
+    },
+    "./dto": {
+      "@radd/source": "./src/dto/index.ts",
+      "types": "./dist/dto/index.d.ts",
+      "default": "./dist/dto/index.js"
     }
   },
   "files": [

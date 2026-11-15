@@ -4,3 +4,4 @@ export * from './queues.js';
 export * from './i18n.js';
 export * from './localized-text.js';
 export * from './enums.js';
+export * from './dto/index.js';

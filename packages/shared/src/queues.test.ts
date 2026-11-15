@@ -50,6 +50,34 @@ describe('parseQueuePayload', () => {
     expect(() => parseQueuePayload('noop', { message: '' })).toThrow();
   });
 
+  it('accepts an invitation email and refuses anything that could carry a code', () => {
+    const job = {
+      template: 'invitation',
+      to: 'rana@example.com',
+      locale: 'ar',
+      params: {
+        organizationName: 'Beit Tayta',
+        inviterName: 'Maya',
+        role: 'staff',
+        url: 'http://localhost:3001/accept-invitation/0199f2a4-5b6c-7d8e-9f01-23456789abcd',
+        days: 7,
+      },
+    };
+    expect(parseQueuePayload('notify.email', job)).toEqual(job);
+    const bad = [
+      { ...job, code: '123456' },
+      { ...job, params: { ...job.params, code: '123456' } },
+      { ...job, template: 'sign-in-code' },
+      { ...job, locale: 'fr' },
+      { ...job, params: { ...job.params, role: 'owner' } },
+      { ...job, params: { ...job.params, url: 'javascript:alert(1)' } },
+      { ...job, to: 'nobody' },
+    ];
+    for (const payload of bad) {
+      expect(() => parseQueuePayload('notify.email', payload)).toThrow();
+    }
+  });
+
   it('refuses jobs for queues whose payload is not defined yet', () => {
     expect(() => parseQueuePayload('menu.publish', { restaurantId: 'x' })).toThrow();
   });
