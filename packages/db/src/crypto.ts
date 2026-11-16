@@ -1,3 +1,5 @@
+import { createHmac, hkdfSync } from 'node:crypto';
+
 import { hash, verify } from '@node-rs/argon2';
 
 /**
@@ -29,4 +31,38 @@ export async function verifyPassword(stored: string, plain: string): Promise<boo
   } catch {
     return false;
   }
+}
+
+// ── Staff quick-switch PINs (ADR-026) ───────────────────────────────────────────────────────
+
+/**
+ * Fixed HKDF label of the PIN pepper. Changing it invalidates every stored PIN, so it carries a
+ * version and is never edited; a new scheme would get a new label and a migration path.
+ */
+export const PIN_PEPPER_INFO = 'radd-menu/staff-pin-pepper/v1';
+
+/**
+ * The server-side pepper for PIN hashes: HKDF-SHA256 of `BETTER_AUTH_SECRET` under a fixed label,
+ * so it never has to be configured separately and is never the secret itself. A 4–6 digit PIN
+ * has at most a million values; without the pepper a leaked `pin_hash` falls to an offline search
+ * in seconds even under argon2id. With it the search also needs the server's secret.
+ */
+export function derivePinPepper(secret: string): Buffer {
+  if (secret.length === 0) throw new TypeError('derivePinPepper needs a secret');
+  return Buffer.from(hkdfSync('sha256', secret, Buffer.alloc(0), PIN_PEPPER_INFO, 32));
+}
+
+/** HMAC-SHA256 of the PIN under the pepper: what argon2id actually hashes. */
+function pepperedPin(pin: string, pepper: Buffer): string {
+  return createHmac('sha256', pepper).update(pin, 'utf8').digest('base64url');
+}
+
+/** PHC string of a PIN, argon2id over its peppered HMAC with a random salt. */
+export function hashPin(pin: string, pepper: Buffer): Promise<string> {
+  return hashPassword(pepperedPin(pin, pepper));
+}
+
+/** Constant-time check of a PIN against a stored PIN hash; a malformed hash is a failed check. */
+export function verifyPin(stored: string, pin: string, pepper: Buffer): Promise<boolean> {
+  return verifyPassword(stored, pepperedPin(pin, pepper));
 }

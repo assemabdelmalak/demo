@@ -16,7 +16,7 @@ Keep it short and current. If something here is wrong, fix it in the same commit
 | P1-T03 Roles and RLS | ✅ committed, CI green | ADR-021; tenancy suite in `packages/db/src/rls.int.test.ts` |
 | P1-T04 Better Auth (.a server, .b console, .c orgs + invites) | ✅ committed, CI green | Docs not written yet (see "Docs debt") |
 | P1-T05 Authorisation layer | ✅ committed | CI result not yet checked; docs not written yet |
-| P1-T06 Super admin, staff devices, PIN | 🟨 in progress | See "Next up" |
+| P1-T06 Super admin, staff devices, PIN | 🟨 partial work committed, 2 tests red | See "Next up" |
 | P1-T07 Audit and outbox | ⬜ | |
 | P1-T08 Seed Beit Tayta | ⬜ | |
 | Security review of T01–T03 | ⬜ | Was started twice and cut off; never finished |
@@ -29,7 +29,10 @@ Keep it short and current. If something here is wrong, fix it in the same commit
 Each has a ready prompt in `docs/sessions/`. Paste the prompt into a new session.
 
 1. **`docs/sessions/01-p1-t06.md`** — super admin, staff devices, PIN sessions.
-   - A previous session started this. **Check `git status` first:** if there are uncommitted files under `apps/api/src/admin`, `apps/api/src/staff`, `apps/api/src/authz` or a new migration, that is unfinished T06 work. Read it, finish it, do not start over.
+   - **A previous session was cut off mid-task and its partial work is committed** (commit "feat(staff): partial staff devices and PIN sessions"). Read that commit's diff first, then finish it; do not start over.
+   - State of that commit: lint, typecheck, unit tests and format pass. **Two integration tests fail and must be made green by finishing the code, not by changing the tests:** `apps/api/test/authz.int.test.ts` › "PIN sessions (ADR-026)" › "keep only floor and kitchen work…" and "are confined to the organisation they were opened in".
+   - Written so far (unreviewed, treat as a draft): migrations `0004_member_pin_lock` and `0005_staff_device_lookup`; `packages/db` staff and admin queries and the staff-devices repository; shared DTOs `dto/staff.ts`, `dto/admin.ts`; `apps/api/src/staff/*` (device cookie, PIN hasher, lockout store, PIN switch, device and member-PIN services and controllers); `apps/api/src/auth/pin-session*.ts`; `apps/api/src/authz/super-admin.ts`; `isSuperAdmin` on `/v1/me`.
+   - Still missing: a `StaffModule` registered in the app (the controllers are not mounted), the PIN lockout store was the last file being written (check it is complete), `apps/api/src/admin/*` (`/v1/admin/orgs`, Bull Board), every new integration test, `pnpm openapi`, the tenant-fixture and privilege-matrix updates for anything the migrations added.
 2. **`docs/sessions/02-p1-t07.md`** — audit and outbox.
 3. **`docs/sessions/03-p1-t08.md`** — seed.
 4. **`docs/sessions/04-security-review.md`** — independent attack review of RLS, auth and PIN sessions; fix what it finds.

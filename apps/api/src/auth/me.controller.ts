@@ -13,7 +13,8 @@ export class MeController {
 
   /** The signed-in user, the current session and the organisations they belong to. */
   @Get()
-  @AuthenticatedOnly()
+  // A PIN session reads who it is too; the console renders device mode from it.
+  @AuthenticatedOnly({ allowPinSession: true })
   @ApiOkResponse({ type: MeDto })
   me(@CurrentSession() session: AuthSession): Promise<Me> {
     return this.service.me(session);

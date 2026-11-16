@@ -14,8 +14,10 @@
     "openapi": "node --enable-source-maps dist/openapi.js ../../.env.example ../../packages/api-client/openapi.json"
   },
   "dependencies": {
+    "@bull-board/api": "9.13.1",
+    "@bull-board/fastify": "9.13.1",
     "@fastify/helmet": "13.2.0",
-    "@fastify/static": "10.1.6",
+    "@fastify/static": "10.1.11",
     "@nestjs/bullmq": "11.0.5",
     "@nestjs/common": "11.2.7",
     "@nestjs/core": "11.2.7",

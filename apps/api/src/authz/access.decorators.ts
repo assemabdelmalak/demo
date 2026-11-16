@@ -1,7 +1,7 @@
 import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
 import { type FastifyRequest } from 'fastify';
 
-import { type Action, isAction, type MemberActor } from '@radd/shared';
+import { type Action, isAction, type MemberActor, type SuperAdminActor } from '@radd/shared';
 
 import { type AuthSession } from '../auth/auth-session';
 
@@ -10,7 +10,10 @@ import { type AuthSession } from '../auth/auth-session';
  * route that declares none, and a unit test fails the build on one.
  */
 export type AccessPolicy =
-  { kind: 'public' } | { kind: 'authenticated' } | { kind: 'permission'; action: Action };
+  | { kind: 'public' }
+  | { kind: 'authenticated'; allowPinSession: boolean }
+  | { kind: 'permission'; action: Action }
+  | { kind: 'super_admin' };
 
 export const ACCESS_POLICY = 'radd:access-policy';
 export const NO_TENANT_TRANSACTION = 'radd:no-tenant-transaction';
@@ -35,7 +38,7 @@ function declare(policy: AccessPolicy): MethodDecorator & ClassDecorator {
     const holder: object = typeof value === 'function' ? value : target;
     if (Reflect.hasOwnMetadata(ACCESS_POLICY, holder)) {
       throw new Error(
-        'A route may declare only one of @Public, @AuthenticatedOnly, @RequirePermission',
+        'A route may declare only one of @Public, @AuthenticatedOnly, @RequirePermission, @RequireSuperAdmin',
       );
     }
     Reflect.defineMetadata(ACCESS_POLICY, policy, holder);
@@ -47,10 +50,14 @@ export const Public = (): MethodDecorator & ClassDecorator => declare({ kind: 'p
 
 /**
  * Any signed-in user, with or without an organisation: `GET /v1/me`, onboarding. No tenant
- * context; the service checks whatever else applies.
+ * context; the service checks whatever else applies. A shared-tablet PIN session (ADR-026) is
+ * refused unless the route says it is fit for one: these routes act on the person's account,
+ * which a PIN session never does.
  */
-export const AuthenticatedOnly = (): MethodDecorator & ClassDecorator =>
-  declare({ kind: 'authenticated' });
+export const AuthenticatedOnly = (
+  options: { allowPinSession?: boolean } = {},
+): MethodDecorator & ClassDecorator =>
+  declare({ kind: 'authenticated', allowPinSession: options.allowPinSession ?? false });
 
 /**
  * A member holding `action` in the route's organisation. Routes with `:rid` take the
@@ -62,6 +69,14 @@ export const RequirePermission = (action: Action): MethodDecorator & ClassDecora
   if (!isAction(action)) throw new Error(`Unknown permission action: ${String(action)}`);
   return declare({ kind: 'permission', action });
 };
+
+/**
+ * A super admin (ADR-027): an allowlisted, verified address with two-factor on and a TOTP check
+ * on this very session within the last 12 hours; never a PIN session. No tenant context: admin
+ * services use the admin pool through `withAdmin`, and audit every action.
+ */
+export const RequireSuperAdmin = (): MethodDecorator & ClassDecorator =>
+  declare({ kind: 'super_admin' });
 
 /**
  * Runs a tenant-scoped handler without the request transaction, for long-lived routes (the AI
@@ -78,6 +93,15 @@ export const CurrentActor = createParamDecorator(
     const actor = context.switchToHttp().getRequest<FastifyRequest>().raddContext?.actor;
     // Only reachable when the decorator is used on a route without @RequirePermission.
     if (!actor) throw new Error('@CurrentActor() needs a @RequirePermission route');
+    return actor;
+  },
+);
+
+/** The super admin acting on a `@RequireSuperAdmin` route, resolved by the guard. */
+export const CurrentSuperAdmin = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): SuperAdminActor => {
+    const actor = context.switchToHttp().getRequest<FastifyRequest>().raddContext?.superAdmin;
+    if (!actor) throw new Error('@CurrentSuperAdmin() needs a @RequireSuperAdmin route');
     return actor;
   },
 );

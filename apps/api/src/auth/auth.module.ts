@@ -15,10 +15,12 @@ import { type AuthRateLimitStorage, createValkeyRateLimitStorage } from './auth-
 import { createAuth } from './auth.config';
 import { MeController } from './me.controller';
 import { MeService } from './me.service';
+import { PinSessionGate } from './pin-session';
 import { API_ENV, type ApiEnv } from '../config/env.module';
 import { DB } from '../db/db.module';
 import { MAILER } from '../mail/mail.module';
 import { QueueProducer } from '../queues/queue-producer';
+import { deviceCookieSpec } from '../staff/device-cookie';
 import { VALKEY } from '../valkey/valkey.module';
 
 /** The Better Auth instance (`Auth` from `auth.config.ts`). */
@@ -51,6 +53,12 @@ export class AuthModule implements BeforeApplicationShutdown {
       providers: [
         MeService,
         { provide: AUTH_OPTIONS, useValue: resolved },
+        {
+          provide: PinSessionGate,
+          inject: [DB, API_ENV],
+          useFactory: (handle: DbHandle, env: ApiEnv) =>
+            new PinSessionGate(handle, deviceCookieSpec(env.BETTER_AUTH_URL)),
+        },
         {
           provide: AuthMailer,
           inject: [MAILER],
@@ -87,7 +95,7 @@ export class AuthModule implements BeforeApplicationShutdown {
             }),
         },
       ],
-      exports: [AUTH, AUTH_RATE_LIMITER, AUTH_OPTIONS, AuthMailer],
+      exports: [AUTH, AUTH_RATE_LIMITER, AUTH_OPTIONS, AuthMailer, PinSessionGate],
     };
   }
 

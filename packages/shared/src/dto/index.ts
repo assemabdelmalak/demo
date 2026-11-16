@@ -3,3 +3,5 @@ export * from './auth.js';
 export * from './invitations.js';
 export * from './organizations.js';
 export * from './restaurants.js';
+export * from './admin.js';
+export * from './staff.js';

@@ -3,7 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { Injectable } from '@nestjs/common';
 
 import { type OrganizationRow } from '@radd/db';
-import { type MemberActor } from '@radd/shared';
+import { type MemberActor, type SuperAdminActor } from '@radd/shared';
 
 import { type AuthSession } from '../auth/auth-session';
 
@@ -19,6 +19,8 @@ export interface RequestContextState {
   session?: AuthSession;
   /** Set on `@RequirePermission` routes only. */
   actor?: MemberActor;
+  /** Set on `@RequireSuperAdmin` routes only. */
+  superAdmin?: SuperAdminActor;
   /** The tenant: the organisation the route acts in. */
   organization?: OrganizationRow;
   /** Set when the route is scoped by `:rid`. */

@@ -29,6 +29,8 @@ import {
   LOCALE_HEADER,
   parseLocaleHeader,
 } from './auth.utils';
+import { pinSessionDeadline } from './pin-session';
+import { pinSessionPlugin } from './pin-session.plugin';
 import { currentRequestLocale } from './request-locale';
 import { type ApiEnv } from '../config/env.module';
 import { MAX_OWNED_ORGANIZATIONS } from '../organizations/organization.rules';
@@ -124,6 +126,27 @@ function isSuspended(organization: Record<string, unknown>): boolean {
 
 const orgSuspended = () =>
   APIError.from('FORBIDDEN', { code: 'ORG_SUSPENDED', message: 'Organisation suspended' });
+
+/**
+ * Second-factor checks that, on success, stamp `twoFactorVerifiedAt` on the session they leave
+ * signed in (ADR-027): during sign-in (a new session) or as a step-up on an existing one.
+ * "Remember this device" skips these endpoints altogether, so a session opened that way carries
+ * no stamp and never counts for admin access.
+ */
+export const TWO_FACTOR_VERIFY_PATHS: ReadonlySet<string> = new Set([
+  '/two-factor/verify-totp',
+  '/two-factor/verify-backup-code',
+]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object';
+}
+
+/** The session token a successful two-factor answer carries (`{ token, user }`). */
+function returnedToken(returned: unknown): string | undefined {
+  if (!isRecord(returned) || returned instanceof Error) return undefined;
+  return typeof returned.token === 'string' ? returned.token : undefined;
+}
 
 function stringField(body: unknown, key: string): string | undefined {
   if (body === null || typeof body !== 'object') return undefined;
@@ -253,6 +276,20 @@ export function createAuth({
     disabledPaths: [...DISABLED_AUTH_PATHS],
     databaseHooks: {
       session: {
+        update: {
+          // Belt and braces for ADR-026: the bridge never lets a PIN session refresh itself, and
+          // should anything still extend one, its expiry stays within 12 hours of its creation.
+          before: (update, ctx) => {
+            const current: unknown = ctx?.context.session?.session;
+            if (!isRecord(current) || current.pinSession !== true) return Promise.resolve();
+            if (!(update.expiresAt instanceof Date) || !(current.createdAt instanceof Date)) {
+              return Promise.resolve();
+            }
+            const deadline = pinSessionDeadline(current.createdAt);
+            if (update.expiresAt <= deadline) return Promise.resolve();
+            return Promise.resolve({ data: { ...update, expiresAt: deadline } });
+          },
+        },
         create: {
           // Most users belong to one organisation; start them in it.
           before: async (session) => {
@@ -266,6 +303,13 @@ export function createAuth({
       },
     },
     hooks: {
+      after: createAuthMiddleware(async (ctx) => {
+        if (!TWO_FACTOR_VERIFY_PATHS.has(ctx.path)) return;
+        // A failed check returns an APIError here; only a success carries a session token.
+        const token = ctx.context.newSession?.session.token ?? returnedToken(ctx.context.returned);
+        if (!token) return;
+        await ctx.context.internalAdapter.updateSession(token, { twoFactorVerifiedAt: new Date() });
+      }),
       before: createAuthMiddleware(async (ctx) => {
         const malformed = findMalformedId(ctx.body) ?? findMalformedId(ctx.query);
         if (malformed) {
@@ -367,12 +411,14 @@ export function createAuth({
           member: {
             additionalFields: {
               pinHash: { type: 'string', required: false, input: false, returned: false },
+              pinDisabledAt: { type: 'date', required: false, input: false, returned: false },
               displayName: { type: 'string', required: false, input: false },
             },
           },
         },
       }),
       twoFactor({ issuer: 'Radd Menu' }),
+      pinSessionPlugin(),
     ],
   });
 }

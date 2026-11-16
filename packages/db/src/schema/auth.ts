@@ -122,8 +122,10 @@ export const member = pgTable(
       .references(() => organization.id, { onDelete: 'cascade' }),
     role: memberRoleEnum('role').notNull(),
     createdAt: createdAt(),
-    // argon2id hash of the staff quick-switch PIN; never returned by any endpoint.
+    // argon2id hash of the staff quick-switch PIN (peppered, ADR-026); never returned by any endpoint.
     pinHash: text('pin_hash'),
+    // Set after 15 failed PIN attempts in a day; the PIN stays unusable until a manager sets a new one.
+    pinDisabledAt: tstz('pin_disabled_at'),
     displayName: text('display_name'),
   },
   (t) => [

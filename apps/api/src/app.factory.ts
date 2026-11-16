@@ -12,6 +12,7 @@ import { type Auth } from './auth/auth.config';
 import { registerAuth } from './auth/auth.fastify';
 import { AUTH, AUTH_OPTIONS, AUTH_RATE_LIMITER, type AuthModuleOptions } from './auth/auth.module';
 import { LOCALE_HEADER } from './auth/auth.utils';
+import { PinSessionGate } from './auth/pin-session';
 import { resolveClientIp } from './common/actor';
 import { problemTypeBase, toProblem } from './common/problem';
 import { sendProblem } from './common/problem.filter';
@@ -67,6 +68,7 @@ export async function createApp(
     limiter: app.get<AuthRateLimitStorage>(AUTH_RATE_LIMITER),
     codeRequestLimit: app.get<Required<AuthModuleOptions>>(AUTH_OPTIONS).codeRequestLimit,
     logger: new NestLogger('AuthBridge'),
+    pinSessions: app.get(PinSessionGate),
   });
 
   app.enableCors({

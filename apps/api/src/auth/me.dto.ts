@@ -19,6 +19,12 @@ export const meSchema = z.object({
     twoFactorVerifiedAt: z.iso.datetime().nullable(),
     createdAt: z.iso.datetime(),
   }),
+  /**
+   * True only when this session would pass the super-admin guard right now (ADR-027), so the
+   * console shows the admin shell to exactly the people the API lets in.
+   */
+  isSuperAdmin: z.boolean(),
+  /** For a PIN session, only the device's organisation (ADR-026). */
   memberships: z.array(
     z.object({
       organizationId: z.uuid(),

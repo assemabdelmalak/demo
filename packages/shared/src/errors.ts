@@ -41,6 +41,11 @@ export const ERROR_CATALOGUE = {
   ORG_SUSPENDED: { status: 403, title: 'Organisation suspended' },
   ORG_LIMIT_REACHED: { status: 409, title: 'Organisation limit reached' },
   ALREADY_A_MEMBER: { status: 409, title: 'Already a member of this organisation' },
+
+  // Super admin, staff devices and PIN sessions (P1-T06)
+  TWO_FACTOR_REQUIRED: { status: 403, title: 'A recent two-factor check is required' },
+  DEVICE_REVOKED: { status: 403, title: 'This device has been revoked' },
+  PIN_LOCKED: { status: 429, title: 'PIN temporarily locked' },
 } as const satisfies Record<string, { status: number; title: string }>;
 
 export type ErrorCode = keyof typeof ERROR_CATALOGUE;

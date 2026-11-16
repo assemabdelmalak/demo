@@ -29,6 +29,20 @@
       "when": 1794582364777,
       "tag": "0003_grants_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794852522040,
+      "tag": "0004_member_pin_lock",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794852526369,
+      "tag": "0005_staff_device_lookup",
+      "breakpoints": true
     }
   ]
 }

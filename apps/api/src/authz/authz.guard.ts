@@ -18,7 +18,9 @@ import { DomainError, holdsPermission, isUuid, type MemberActor } from '@radd/sh
 
 import { accessPolicyOf } from './access.decorators';
 import { type RequestContextState } from './request-context';
+import { superAdminVerdict } from './super-admin';
 import { type AuthSession } from '../auth/auth-session';
+import { API_ENV, type ApiEnv } from '../config/env.module';
 import { DB } from '../db/db.module';
 
 const SAFE_METHODS: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -48,7 +50,10 @@ interface Scope {
 export class AuthzGuard implements CanActivate {
   private readonly logger = new Logger(AuthzGuard.name);
 
-  constructor(@Inject(DB) private readonly handle: DbHandle) {}
+  constructor(
+    @Inject(DB) private readonly handle: DbHandle,
+    @Inject(API_ENV) private readonly env: ApiEnv,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // Only HTTP exists so far; the Socket.IO gateway (P4-T03) brings its own handshake checks.
@@ -78,7 +83,23 @@ export class AuthzGuard implements CanActivate {
     state.session = session;
 
     if (policy.kind === 'authenticated') {
+      // Account routes (onboarding, …) are not for a shared tablet's PIN session (ADR-026).
+      if (session.pinSession && !policy.allowPinSession) {
+        throw new DomainError('FORBIDDEN', { detail: 'Not available in a device session' });
+      }
       request.raddContext = state;
+      return true;
+    }
+
+    if (policy.kind === 'super_admin') {
+      const verdict = superAdminVerdict(session, this.env.SUPER_ADMIN_EMAILS);
+      // Same answer as any forbidden route: nothing says an admin area exists.
+      if (verdict === 'not_admin') throw new DomainError('FORBIDDEN');
+      if (verdict === 'two_factor_required') throw new DomainError('TWO_FACTOR_REQUIRED');
+      request.raddContext = {
+        ...state,
+        superAdmin: { kind: 'super_admin', userId: session.userId },
+      };
       return true;
     }
 

@@ -383,6 +383,48 @@ describe.skipIf(!runtime.ready)('tenant isolation (SECURITY §3, ADR-022)', () =
       expect(await lookup(orgA.restaurantId)).toBe(orgA.organizationId);
       expect(await lookup('0199f2a4-5b6c-7d8e-9f01-23456789abcd')).toBeNull();
     });
+
+    it("resolves a staff device's token hash to its identity for the API role only (ADR-026)", async () => {
+      const tokenHash = `lookup-${String(Date.now())}`;
+      const [device] = await admin.db
+        .insert(schema.staffDevices)
+        .values({
+          organizationId: orgA.organizationId,
+          restaurantId: orgA.restaurantId,
+          name: 'Pass tablet',
+          tokenHash,
+        })
+        .returning();
+      if (!device) throw new Error('no device');
+      const lookup = (db: Db, hash: string) =>
+        db.execute(sql`select * from staff_device_by_token_hash(${hash})`);
+
+      const { rows } = await lookup(app.db, tokenHash);
+      expect(rows).toEqual([
+        {
+          id: device.id,
+          organization_id: orgA.organizationId,
+          restaurant_id: orgA.restaurantId,
+          revoked_at: null,
+        },
+      ]);
+      expect((await lookup(app.db, 'no-such-hash')).rows).toEqual([]);
+      // Without a tenant the table itself stays closed to the API role.
+      expect(await count(app.db, 'staff_devices')).toBe(0);
+      // The worker never handles device cookies, and nobody else may call it.
+      expect(await pgCode(lookup(worker.db, tokenHash))).toBe(INSUFFICIENT_PRIVILEGE);
+      const { rows: grants } = await catalog.query<{ role: string; allowed: boolean }>(`
+        select r.rolname::text as role,
+               has_function_privilege(r.oid, 'staff_device_by_token_hash(text)', 'EXECUTE') as allowed
+          from pg_roles r
+         where r.rolname in ('app_runtime', 'app_worker', 'app_admin')
+         order by 1`);
+      expect(grants).toEqual([
+        { role: 'app_admin', allowed: false },
+        { role: 'app_runtime', allowed: true },
+        { role: 'app_worker', allowed: false },
+      ]);
+    });
   });
 
   describe('audit log and feature flags', () => {
@@ -575,7 +617,11 @@ describe.skipIf(!runtime.ready)('tenant isolation (SECURITY §3, ADR-022)', () =
           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where n.nspname = 'public' and p.prosecdef
          order by 1`);
-      expect(rows.map((row) => row.name)).toEqual(['is_published_menu_version', 'restaurant_org']);
+      expect(rows.map((row) => row.name)).toEqual([
+        'is_published_menu_version',
+        'restaurant_org',
+        'staff_device_by_token_hash',
+      ]);
       expect(rows.filter((row) => !row.pinned || row.public)).toEqual([]);
     });
 

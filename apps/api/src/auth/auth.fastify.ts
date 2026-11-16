@@ -6,6 +6,7 @@ import { type AuthRateLimitStorage } from './auth-rate-limit';
 import { type AuthSession } from './auth-session';
 import { type Auth } from './auth.config';
 import { authUrlParts, CLIENT_IP_HEADER, toAuthClientIp } from './auth.utils';
+import { PIN_SESSION_AUTH_PATHS, type PinSessionGate } from './pin-session';
 import { problemTypeBase, toProblem } from '../common/problem';
 import { sendProblem } from '../common/problem.filter';
 import { type ApiEnv } from '../config/env.module';
@@ -28,6 +29,32 @@ export interface RegisterAuthDeps {
   /** The extra per-IP cap on code emails; on unless a test turns it off. */
   codeRequestLimit: boolean;
   logger: LoggerService;
+  /** Confines shared-tablet PIN sessions to their device (ADR-026). */
+  pinSessions: PinSessionGate;
+}
+
+/** Better Auth's error shape, so its client handles the refusal like its own. */
+const PIN_SESSION_FORBIDDEN = {
+  code: 'PIN_SESSION_FORBIDDEN',
+  message: 'Not available in a device session',
+};
+
+/**
+ * What the bridge does with a `/v1/auth/*` request that carries a PIN session (ADR-026):
+ * `forward` it to Better Auth (with refresh switched off for get-session), answer `signed_out`
+ * (get-session's `null`), or `refuse` it. A PIN session may only read itself and sign out; when
+ * it has just been ended (expired, device revoked) nothing is left to confine.
+ */
+export type PinAuthDecision = 'forward' | 'forward_no_refresh' | 'signed_out' | 'refuse';
+
+export function pinAuthDecision(
+  path: string,
+  verdict: { ok: boolean; end?: boolean },
+): PinAuthDecision {
+  if (!verdict.ok && verdict.end) return 'forward';
+  if (!PIN_SESSION_AUTH_PATHS.has(path)) return 'refuse';
+  if (path === '/sign-out') return 'forward';
+  return verdict.ok ? 'forward_no_refresh' : 'signed_out';
 }
 
 /** The auth-relative path (`/sign-in/email`), with duplicate and trailing slashes removed. */
@@ -80,11 +107,32 @@ export async function registerAuth(
   fastify: FastifyInstance,
   auth: Auth,
   env: ApiEnv,
-  { limiter, codeRequestLimit, logger }: RegisterAuthDeps,
+  { limiter, codeRequestLimit, logger, pinSessions }: RegisterAuthDeps,
 ): Promise<void> {
   const { origin, basePath } = authUrlParts(env.BETTER_AUTH_URL);
   const typeBase = problemTypeBase(env.APP_DOMAIN);
   const sessionCookie = (await auth.$context).authCookies.sessionToken.name;
+
+  /** Whether the request's session is a PIN session, and if so what it may do here. */
+  const pinSessionDecision = async (
+    request: FastifyRequest,
+    path: string,
+  ): Promise<PinAuthDecision> => {
+    const result = await auth.api.getSession({
+      headers: fromNodeHeaders(request.headers),
+      query: { disableRefresh: true },
+    });
+    if (!result?.session.pinSession) return 'forward';
+    const verdict = await pinSessions.check(
+      {
+        sessionId: result.session.id,
+        staffDeviceId: result.session.staffDeviceId ?? null,
+        createdAt: result.session.createdAt,
+      },
+      request.headers.cookie,
+    );
+    return pinAuthDecision(path, verdict);
+  };
 
   fastify.route({
     method: ['GET', 'POST'],
@@ -105,6 +153,17 @@ export async function registerAuth(
           }
         }
 
+        const url = new URL(request.url, origin);
+        if (hasCookie(request.headers.cookie, sessionCookie)) {
+          const decision = await pinSessionDecision(request, path);
+          if (decision === 'refuse') return await reply.status(403).send(PIN_SESSION_FORBIDDEN);
+          if (decision === 'signed_out') {
+            return await reply.status(200).type('application/json').send('null');
+          }
+          // Reading the session must never slide a PIN session past its 12 hours.
+          if (decision === 'forward_no_refresh') url.searchParams.set('disableRefresh', 'true');
+        }
+
         const headers = fromNodeHeaders(request.headers);
         for (const name of BODY_FRAMING_HEADERS) headers.delete(name);
         // Overwritten on every request: a client-sent value must never reach Better Auth.
@@ -113,7 +172,7 @@ export async function registerAuth(
         if (clientIp) headers.set(CLIENT_IP_HEADER, clientIp);
 
         const response = await auth.handler(
-          new Request(new URL(request.url, origin), {
+          new Request(url, {
             method: request.method,
             headers,
             body: requestBody(request),
@@ -143,12 +202,27 @@ export async function registerAuth(
       });
       if (!result) return;
       const { session, user } = result;
+      let activeOrganizationId = session.activeOrganizationId ?? null;
+      if (session.pinSession) {
+        // Device-bound (ADR-026): valid only with its own device's cookie, within 12 hours, and
+        // always in the device's organisation, whatever the session row says.
+        const verdict = await pinSessions.check(
+          {
+            sessionId: session.id,
+            staffDeviceId: session.staffDeviceId ?? null,
+            createdAt: session.createdAt,
+          },
+          request.headers.cookie,
+        );
+        if (!verdict.ok) return;
+        activeOrganizationId = verdict.organizationId;
+      }
       const authSession: AuthSession = {
         sessionId: session.id,
         userId: user.id,
         email: user.email,
         emailVerified: user.emailVerified,
-        activeOrganizationId: session.activeOrganizationId ?? null,
+        activeOrganizationId,
         pinSession: session.pinSession ?? false,
         staffDeviceId: session.staffDeviceId ?? null,
         twoFactorVerifiedAt: session.twoFactorVerifiedAt ?? null,
