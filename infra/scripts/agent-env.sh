@@ -23,7 +23,8 @@ export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 export TURBO_TELEMETRY_DISABLED=1
 export NEXT_TELEMETRY_DISABLED=1
 # Playwright uses the browser preinstalled in the container instead of downloading one.
-_radd_chromium="$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | head -1)"
+# The folder is `chrome-linux` or `chrome-linux64` depending on the Chromium build.
+_radd_chromium="$(ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome 2>/dev/null | head -1)"
 [ -n "$_radd_chromium" ] && export PW_CHROMIUM_PATH="$_radd_chromium"
 # Integration tests use these instead of Testcontainers (no Docker here). See agent-services.sh.
 export TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres
