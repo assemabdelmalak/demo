@@ -9,7 +9,7 @@ overrides:
   fastify: 5.12.7
   '@sentry/node>@sentry/bundler-plugins': '-'
 
-pnpmfileChecksum: sha256-F3KVpXFu1E38XgEc5KeDlg8oyWCoCYo9JvYDPm71oQM=
+pnpmfileChecksum: sha256-Evbq0cBnfy7ZJcibut+VIaQGO4GeAHhbu4rr396GlgM=
 
 importers:
 
@@ -62,10 +62,10 @@ importers:
     dependencies:
       '@bull-board/api':
         specifier: 9.13.1
-        version: 9.13.1(@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3))(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
+        version: 9.13.1(@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1)))(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))
       '@bull-board/fastify':
         specifier: 9.13.1
-        version: 9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
+        version: 9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))
       '@fastify/helmet':
         specifier: 13.2.0
         version: 13.2.0
@@ -177,7 +177,7 @@ importers:
         version: 5.3.0
       '@hookform/resolvers':
         specifier: 7.0.6
-        version: 7.0.6(@standard-schema/spec@1.1.0)(ajv-formats@3.0.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(valibot@1.5.0(typescript@5.9.3))(zod@4.6.7)
+        version: 7.0.6(@standard-schema/spec@1.1.0)(ajv-formats@3.0.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(valibot@1.5.0)(zod@4.6.7)
       '@radd/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -6771,11 +6771,6 @@ packages:
 
   valibot@1.5.0:
     resolution: {integrity: sha512-nil6AkP2TChWL43Z5uJ6GTxX01CUA+g8LWUM+N/rB9NBbkUMaUsi9PUNzlUPgoKASgmx9f7eGOYpJ04/fSa6FQ==}
-    peerDependencies:
-      typescript: 5.9.3
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   verkit@0.5.0:
     resolution: {integrity: sha512-u4J1hr6Y+C/hit34GwL3eIcUf3wngT8TlYUjK7tk0jxydKLAq3sYvifjdTDA6U3KCKRcQCQDGf/srjxfZF3l7g==}
@@ -7174,35 +7169,31 @@ snapshots:
 
   '@borewit/text-codec@0.2.2': {}
 
-  '@bull-board/api@9.13.1(@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3))(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)':
+  '@bull-board/api@9.13.1(@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1)))(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))':
     dependencies:
-      '@bull-board/ui': 9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
+      '@bull-board/ui': 9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))
       redis-info: 3.1.0
-      valibot: 1.5.0(typescript@5.9.3)
+      valibot: 1.5.0
     optionalDependencies:
       bullmq: 6.3.17(ioredis@5.11.1)(pg@8.23.1)
-    transitivePeerDependencies:
-      - typescript
 
-  '@bull-board/fastify@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)':
+  '@bull-board/fastify@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))':
     dependencies:
-      '@bull-board/api': 9.13.1(@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3))(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
-      '@bull-board/ui': 9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
+      '@bull-board/api': 9.13.1(@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1)))(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))
+      '@bull-board/ui': 9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))
       '@fastify/static': 10.1.11
       '@fastify/view': 12.0.1
       ejs: 6.0.1
     transitivePeerDependencies:
       - bull
       - bullmq
-      - typescript
 
-  '@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)':
+  '@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))':
     dependencies:
-      '@bull-board/api': 9.13.1(@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3))(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
+      '@bull-board/api': 9.13.1(@bull-board/ui@9.13.1(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1)))(bullmq@6.3.17(ioredis@5.11.1)(pg@8.23.1))
     transitivePeerDependencies:
       - bull
       - bullmq
-      - typescript
 
   '@cacheable/memory@2.2.0':
     dependencies:
@@ -7773,7 +7764,7 @@ snapshots:
       protobufjs: 7.6.6
       yargs: 17.7.3
 
-  '@hookform/resolvers@7.0.6(@standard-schema/spec@1.1.0)(ajv-formats@3.0.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(valibot@1.5.0(typescript@5.9.3))(zod@4.6.7)':
+  '@hookform/resolvers@7.0.6(@standard-schema/spec@1.1.0)(ajv-formats@3.0.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(valibot@1.5.0)(zod@4.6.7)':
     dependencies:
       '@standard-schema/utils': 0.3.0
       react-hook-form: 7.92.0(@types/react@19.3.0)(react@19.3.1)
@@ -7781,7 +7772,7 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
-      valibot: 1.5.0(typescript@5.9.3)
+      valibot: 1.5.0
       zod: 4.6.7
 
   '@humanfs/core@0.19.2':
@@ -12834,9 +12825,7 @@ snapshots:
 
   uuid@14.0.3: {}
 
-  valibot@1.5.0(typescript@5.9.3):
-    optionalDependencies:
-      typescript: 5.9.3
+  valibot@1.5.0: {}
 
   verkit@0.5.0: {}
 
