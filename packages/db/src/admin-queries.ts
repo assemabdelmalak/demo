@@ -17,8 +17,10 @@ export interface AdminOrganizationRow {
   createdAt: Date;
 }
 
+// Qualified by hand: inside `sql`, Drizzle renders a column without its table, which in this
+// correlated subquery would compare `member.organization_id` with `member.id` (always 0).
 const memberCount = sql<number>`(
-  select count(*)::int from ${member} where ${member.organizationId} = ${organization.id}
+  select count(*)::int from ${member} m where m.organization_id = ${organization}.id
 )`.mapWith(Number);
 
 const columns = {
