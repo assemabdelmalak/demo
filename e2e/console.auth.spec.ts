@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import { type Page } from '@playwright/test';
@@ -15,6 +16,7 @@ type Messages = { [key: string]: string | Messages };
 type Locale = 'en' | 'ar';
 
 const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? 'http://localhost:8025';
+const API_URL = process.env.E2E_API_URL ?? 'http://localhost:4000';
 const PASSWORD = 'a long and memorable sentence';
 
 const catalogues: Record<Locale, Messages> = {
@@ -49,8 +51,12 @@ interface MailSummary {
   To: { Address: string }[];
 }
 
-/** The 6-digit code in the newest email to `address`, polling Mailpit's HTTP API. */
-async function latestCode(page: Page, address: string): Promise<string> {
+/** The text of the newest email to `address` that `matches`, polling Mailpit's HTTP API. */
+async function latestMail(
+  page: Page,
+  address: string,
+  matches: (text: string) => boolean,
+): Promise<string> {
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
     const list = (await (
@@ -63,12 +69,19 @@ async function latestCode(page: Page, address: string): Promise<string> {
       const full = (await (
         await page.request.get(`${MAILPIT_URL}/api/v1/message/${message.ID}`)
       ).json()) as { Text: string };
-      const code = /^(\d{6})\s*$/m.exec(full.Text)?.[1];
-      if (code) return code;
+      if (matches(full.Text)) return full.Text;
     }
     await page.waitForTimeout(250);
   }
-  throw new Error(`no code emailed to ${address}`);
+  throw new Error(`no matching email to ${address}`);
+}
+
+/** The 6-digit code in the newest email to `address`. */
+async function latestCode(page: Page, address: string): Promise<string> {
+  const textOf = await latestMail(page, address, (body) => /^\d{6}\s*$/m.test(body));
+  const code = /^(\d{6})\s*$/m.exec(textOf)?.[1];
+  if (!code) throw new Error(`no code emailed to ${address}`);
+  return code;
 }
 
 /**
@@ -188,6 +201,20 @@ test.describe('console accounts @smoke', () => {
     await submitPastRateLimit(page, text('auth.signIn.submit'));
     await expect(page).toHaveURL(/\/menu$/);
     await expect(page.locator('header')).toContainText(organization);
+
+    // The API's queue reaches the worker (carried from P0 into P1-T06): an invitation is put on
+    // `notify.email` by the API and only the worker sends it, so its arrival proves both halves
+    // agree on the queue name, prefix and payload.
+    const invitee = uniqueEmail(`${locale}-invitee`);
+    const invited = await page.request.post(`${API_URL}/v1/invitations`, {
+      headers: { origin: new URL(baseURL ?? '').origin, 'idempotency-key': randomUUID() },
+      data: { email: invitee, role: 'staff' },
+    });
+    expect(invited.status()).toBe(201);
+    const invitation = await latestMail(page, invitee, (body) =>
+      body.includes('/accept-invitation/'),
+    );
+    expect(invitation).toContain(organization);
   });
 
   test('a wrong password gets a translated message, not the server text', async ({
