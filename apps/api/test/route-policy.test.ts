@@ -92,6 +92,18 @@ describe('route access policies (ADR-024)', () => {
     expect(publicRoutes.map((route) => route.name).sort()).toEqual([
       'HealthController.live',
       'HealthController.ready',
+      // A shared tablet may have nobody signed in (ADR-026). It needs the device's own cookie and
+      // the member's PIN, counted in Valkey before any check, and refuses every failure alike.
+      'StaffDevicesController.switch',
+    ]);
+  });
+
+  it('keeps super-admin routes to the admin controllers', () => {
+    const adminRoutes = routes.filter((route) => route.policy?.kind === 'super_admin');
+    expect(adminRoutes.map((route) => route.name).sort()).toEqual([
+      'AdminOrganizationsController.list',
+      'AdminOrganizationsController.read',
+      'AdminOrganizationsController.update',
     ]);
   });
 });

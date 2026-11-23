@@ -7,9 +7,15 @@ export interface PendingAuditEntry {
   action: string;
   entityType: string;
   entityId: string;
-  organizationId: string;
+  /** Null for platform actions that touch no organisation (Bull Board), written with no tenant. */
+  organizationId: string | null;
   before?: Record<string, unknown> | null;
   after?: Record<string, unknown> | null;
+  /**
+   * Set only where no Nest request context exists: Bull Board's raw Fastify routes. Everywhere
+   * else the actor and request ID come from the request context.
+   */
+  outsideNest?: { actor: { kind: 'super_admin'; userId: string }; requestId: string };
 }
 
 /**

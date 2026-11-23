@@ -6,12 +6,15 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { type FastifyError, type FastifyReply, type FastifyRequest } from 'fastify';
 import { Logger } from 'nestjs-pino';
 
+import { QUEUE_NAMES } from '@radd/shared';
+
+import { registerBullBoard } from './admin/bull-board';
 import { type AppModuleOptions, AppModule } from './app.module';
 import { type AuthRateLimitStorage } from './auth/auth-rate-limit';
 import { type Auth } from './auth/auth.config';
 import { registerAuth } from './auth/auth.fastify';
 import { AUTH, AUTH_OPTIONS, AUTH_RATE_LIMITER, type AuthModuleOptions } from './auth/auth.module';
-import { LOCALE_HEADER } from './auth/auth.utils';
+import { authUrlParts, LOCALE_HEADER } from './auth/auth.utils';
 import { PinSessionGate } from './auth/pin-session';
 import { resolveClientIp } from './common/actor';
 import { problemTypeBase, toProblem } from './common/problem';
@@ -20,6 +23,7 @@ import { genRequestId, REQUEST_ID_HEADER } from './common/request-id';
 import { type ApiEnv } from './config/env.module';
 import { IDEMPOTENCY_HEADER, IDEMPOTENT_REPLAYED_HEADER } from './idempotency/idempotent.decorator';
 import { buildOpenApiDocument, DOCS_PATH } from './openapi/document';
+import { QueueProducer } from './queues/queue-producer';
 
 export const API_PREFIX = 'v1';
 
@@ -69,6 +73,15 @@ export async function createApp(
     codeRequestLimit: app.get<Required<AuthModuleOptions>>(AUTH_OPTIONS).codeRequestLimit,
     logger: new NestLogger('AuthBridge'),
     pinSessions: app.get(PinSessionGate),
+  });
+
+  // After the auth bridge: its root hook resolves the session this plugin's guard reads (ADR-027).
+  const queues = app.get(QueueProducer);
+  await registerBullBoard(fastify, {
+    queues: QUEUE_NAMES.map((name) => queues.queue(name)),
+    allowlist: env.SUPER_ADMIN_EMAILS,
+    apiOrigin: authUrlParts(env.BETTER_AUTH_URL).origin,
+    typeBase,
   });
 
   app.enableCors({

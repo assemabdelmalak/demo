@@ -15,6 +15,7 @@ import { loggerOptions } from '@radd/config/logging';
 import { type Mailer } from '@radd/mail';
 import { DomainError } from '@radd/shared';
 
+import { AdminModule } from './admin/admin.module';
 import { AuthModule, type AuthModuleOptions } from './auth/auth.module';
 import { AuthzModule } from './authz/authz.module';
 import { zodFieldErrors } from './common/problem';
@@ -109,6 +110,7 @@ export class AppModule {
         OrganizationsModule,
         RestaurantsModule,
         StaffModule.register(options.staff),
+        AdminModule,
         HealthModule,
         ...(options.imports ?? []),
       ],
