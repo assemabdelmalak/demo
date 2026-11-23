@@ -29,6 +29,7 @@ import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { QueuesModule } from './queues/queues.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
+import { StaffModule, type StaffModuleOptions } from './staff/staff.module';
 import { ThrottlingModule } from './throttling/throttling.module';
 import { ValkeyModule } from './valkey/valkey.module';
 
@@ -62,6 +63,8 @@ export interface AppModuleOptions {
   mailer?: Mailer;
   /** Auth rate limits; both are on unless a test turns them off. */
   auth?: AuthModuleOptions;
+  /** PIN lockout windows; tests shorten them. */
+  staff?: StaffModuleOptions;
 }
 
 @Module({})
@@ -105,6 +108,7 @@ export class AppModule {
         AuthModule.register(options.auth),
         OrganizationsModule,
         RestaurantsModule,
+        StaffModule.register(options.staff),
         HealthModule,
         ...(options.imports ?? []),
       ],
