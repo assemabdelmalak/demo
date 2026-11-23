@@ -82,6 +82,29 @@ export class TestBrowser {
     );
   }
 
+  async put(url: string, payload: unknown = {}, extra?: Record<string, string>) {
+    return this.remember(
+      await this.app.inject({
+        method: 'PUT',
+        url,
+        payload: payload as Record<string, unknown>,
+        headers: this.headers(extra),
+        remoteAddress: this.options.ip,
+      }),
+    );
+  }
+
+  async delete(url: string, extra?: Record<string, string>) {
+    return this.remember(
+      await this.app.inject({
+        method: 'DELETE',
+        url,
+        headers: this.headers(extra),
+        remoteAddress: this.options.ip,
+      }),
+    );
+  }
+
   async get(url: string, extra?: Record<string, string>) {
     return this.remember(
       await this.app.inject({

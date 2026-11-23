@@ -20,12 +20,15 @@ import { TestRoutesModule } from './support/test-routes.module';
 import { AuthzGuard } from '../src/authz/authz.guard';
 import { TenantTransactionInterceptor } from '../src/authz/tenant-transaction.interceptor';
 import { IdempotencyInterceptor } from '../src/idempotency/idempotency.interceptor';
+import { deviceCookieSpec, hashDeviceToken, newDeviceToken } from '../src/staff/device-cookie';
 import { ActorThrottlerGuard } from '../src/throttling/actor-throttler.guard';
 
 const runtime = await detectIntegrationRuntime(['postgres', 'valkey']);
 
 const CONSOLE = 'http://localhost:3001';
 const PASSWORD = 'correct horse battery';
+/** The test env's API is plain HTTP, so the device cookie is `radd_device` (ADR-026). */
+const DEVICE_COOKIE_NAME = deviceCookieSpec(testEnv().BETTER_AUTH_URL).name;
 
 interface Account {
   email: string;
@@ -45,7 +48,7 @@ const CALLERS = [
 ] as const;
 type Caller = (typeof CALLERS)[number];
 
-type Method = 'GET' | 'POST' | 'PATCH';
+type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 interface Row {
   name: string;
@@ -161,20 +164,58 @@ describe.skipIf(!runtime.ready)('authorisation layer (ADR-024, ADR-025)', () => 
     const { client } = t[caller];
     if (method === 'GET') return client.get(url);
     if (method === 'PATCH') return client.patch(url, body, headers);
+    if (method === 'PUT') return client.put(url, body, headers);
+    if (method === 'DELETE') return client.delete(url, headers);
     return client.post(url, body, headers);
   }
 
+  /**
+   * Runs `run` while the account's sessions are PIN sessions (ADR-026). The flag is server-only,
+   * so it is written through the admin connection; a PIN session is only valid when bound to a
+   * registered device whose cookie the browser sends, so one is registered in the account's
+   * active organisation and its cookie handed to the account's browser. Forging the session
+   * rather than switching by PIN also covers what the switch itself refuses: a manager's PIN
+   * session must still hold nothing. `staff.int.test.ts` covers the real switch.
+   */
   async function withPinSession<T>(account: Account, run: () => Promise<T>): Promise<T> {
-    // Server-only flag (ADR-026): written through the admin connection, as P1-T06's switch will.
-    await admin.pool.query('update session set pin_session = true where user_id = $1', [
-      account.userId,
-    ]);
+    const [active] = await query<{ organizationId: string }>(
+      `select active_organization_id as "organizationId" from session
+        where user_id = $1 and active_organization_id is not null limit 1`,
+      [account.userId],
+    );
+    if (!active) throw new Error('withPinSession needs a session in an organisation');
+    let [restaurant] = await query<{ id: string }>(
+      'select id from restaurants where organization_id = $1 limit 1',
+      [active.organizationId],
+    );
+    if (!restaurant) {
+      const slug = nextSlug();
+      const created = await withTenant(runtimeDb.db, active.organizationId, () =>
+        new RestaurantsRepository().create({ name: { en: slug }, slug }),
+      );
+      if (!created) throw new Error('could not create a restaurant for the device');
+      restaurant = created;
+    }
+    const token = newDeviceToken();
+    const deviceId = uuidv7();
+    await query(
+      `insert into staff_devices (id, organization_id, restaurant_id, name, token_hash)
+       values ($1, $2, $3, 'Test tablet', $4)`,
+      [deviceId, active.organizationId, restaurant.id, hashDeviceToken(token)],
+    );
+    await admin.pool.query(
+      'update session set pin_session = true, staff_device_id = $2 where user_id = $1',
+      [account.userId, deviceId],
+    );
+    account.client.jar.set(DEVICE_COOKIE_NAME, token);
     try {
       return await run();
     } finally {
-      await admin.pool.query('update session set pin_session = false where user_id = $1', [
-        account.userId,
-      ]);
+      account.client.jar.delete(DEVICE_COOKIE_NAME);
+      await admin.pool.query(
+        'update session set pin_session = false, staff_device_id = null where user_id = $1',
+        [account.userId],
+      );
     }
   }
 
@@ -208,6 +249,18 @@ describe.skipIf(!runtime.ready)('authorisation layer (ADR-024, ADR-025)', () => 
     it('answers every existing console endpoint with the expected status', async () => {
       const t = await team('matrix');
       const restaurantA = await createRestaurant(t.owner);
+      const [staffMember] = await query<{ id: string }>(
+        'select id from member where user_id = $1 and organization_id = $2',
+        [t.staff.userId, t.org.id],
+      );
+      if (!staffMember) throw new Error('no staff member row');
+      const device = (
+        await t.owner.client.post(
+          `/v1/restaurants/${restaurantA.id}/staff-devices`,
+          { name: 'Matrix tablet' },
+          key(),
+        )
+      ).json<{ id: string }>();
 
       // prettier-ignore
       const ROWS: readonly Row[] = [
@@ -233,6 +286,25 @@ describe.skipIf(!runtime.ready)('authorisation layer (ADR-024, ADR-025)', () => 
           expected: [200, 200, 200, 200, 403, 404, 401] },
         { name: 'GET /v1/restaurants/:rid', method: 'GET', url: () => `/v1/restaurants/${restaurantA.id}`,
           expected: [200, 200, 200, 200, 404, 404, 401] },
+        { name: 'GET /v1/restaurants/:rid/staff-devices', method: 'GET', url: () => `/v1/restaurants/${restaurantA.id}/staff-devices`,
+          expected: [200, 200, 403, 403, 404, 404, 401] },
+        { name: 'POST /v1/restaurants/:rid/staff-devices', method: 'POST', url: () => `/v1/restaurants/${restaurantA.id}/staff-devices`,
+          body: () => ({ name: 'Bar tablet' }),
+          expected: [201, 201, 403, 403, 404, 404, 401] },
+        // Revoking twice keeps the first revocation, so one device serves every caller.
+        { name: 'DELETE /v1/staff-devices/:id', method: 'DELETE', url: () => `/v1/staff-devices/${device.id}`,
+          expected: [200, 200, 403, 403, 403, 404, 401] },
+        { name: 'PUT /v1/members/:id/pin', method: 'PUT', url: () => `/v1/members/${staffMember.id}/pin`,
+          body: () => ({ pin: '2580' }),
+          expected: [204, 204, 403, 403, 403, 404, 401] },
+        { name: 'DELETE /v1/members/:id/pin', method: 'DELETE', url: () => `/v1/members/${staffMember.id}/pin`,
+          expected: [204, 204, 403, 403, 403, 404, 401] },
+        // Public, but nobody here holds the device cookie: the same refusal for everyone.
+        { name: 'POST /v1/staff-devices/:id/switch', method: 'POST', url: () => `/v1/staff-devices/${device.id}/switch`,
+          body: () => ({ memberId: staffMember.id, pin: '2580' }),
+          expected: [403, 403, 403, 403, 403, 403, 403] },
+        { name: 'GET /v1/admin/orgs', method: 'GET', url: () => '/v1/admin/orgs',
+          expected: [403, 403, 403, 403, 403, 403, 401] },
         { name: 'GET /v1/health/live', method: 'GET', url: () => '/v1/health/live',
           expected: [200, 200, 200, 200, 200, 200, 200] },
         // Last: creating an organisation makes it the caller's active one.
