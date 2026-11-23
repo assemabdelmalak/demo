@@ -15,7 +15,7 @@ Read this whole file at the start of every session.
 
 ## 1. Read order
 
-0. **`docs/HANDOFF.md`: current state, next task, setup commands. Start every session here.**
+0. **`docs/HANDOFF.md`: the central record (status of every phase, next task, setup, rules, risks, owner to-dos and a log of every session). Start every session here and update it before you stop.**
 1. `CLAUDE.md` (this file)
 2. `docs/PRD.md`: what and why
 3. `docs/ARCHITECTURE.md`: stack and system design

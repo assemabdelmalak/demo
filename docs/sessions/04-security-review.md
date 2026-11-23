@@ -2,7 +2,7 @@
 
 ## Prompt
 
-Read docs/HANDOFF.md first and follow its "Start of every session" steps. Work only on this one task, on branch `phase/01-data-auth-tenancy`. If `git status` shows uncommitted files for this task, a previous session was interrupted: read them and continue, do not start over. When the gates in HANDOFF §4 pass: commit in small Conventional Commits, push, check the CI runs for the branch and fix anything red, then update docs/HANDOFF.md (state table, "Next up", last verified numbers, any new risk) and docs/PROGRESS.md (a row for this task), commit and push that too. Finish with a short plain-language report: what works now, the test numbers, anything I need to decide. Do not start the next task.
+Read docs/HANDOFF.md first and follow its "Start of every session" steps, starting from the newest branch named in its §4. Work only on this one task. You may push to `phase/01-data-auth-tenancy` as well as to your own session branch. If `git status` shows uncommitted files for this task, a previous session was interrupted: read them and continue, do not start over. When the gates in HANDOFF §4 pass: commit in small Conventional Commits, push, check the CI runs for the branch and fix anything red, then update docs/HANDOFF.md (status, "Next up", last verified numbers, risks, and a session-log entry) and docs/PROGRESS.md (a row for this task), commit and push that too. Finish with a short plain-language report: what works now, the test numbers, anything I need to decide. Do not start the next task.
 
 Task: act as an attacker against Phase 1, then fix what you prove. This review was planned after P1-T03 and never completed.
 
