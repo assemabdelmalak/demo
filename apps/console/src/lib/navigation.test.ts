@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   activeMembership,
+  adminLinkFor,
   destinationFor,
   homeForRole,
   isActivePath,
@@ -21,6 +22,7 @@ const ORG_B = '0199f2a4-5b6c-7d8e-9f01-23456789abce';
 function me(
   memberships: Me['memberships'],
   activeOrganizationId: string | null = memberships[0]?.organizationId ?? null,
+  isSuperAdmin = false,
 ): Me {
   return {
     user: {
@@ -38,6 +40,7 @@ function me(
       twoFactorVerifiedAt: null,
       createdAt: '2026-11-15T00:00:00.000Z',
     },
+    isSuperAdmin,
     memberships,
   };
 }
@@ -151,5 +154,20 @@ describe('where a signed-in person goes', () => {
     expect(destinationFor(me([]), '/accept-invitation/1')).toBe('/accept-invitation/1');
     expect(destinationFor(me([member(ORG_A, 'owner')]), '//evil.example')).toBe('/menu');
     expect(destinationFor(me([member(ORG_A, 'owner')]), '/')).toBe('/menu');
+  });
+});
+
+describe('super admins', () => {
+  it('go to the admin shell when they belong to no organisation', () => {
+    expect(destinationFor(me([], null, true))).toBe('/admin/organizations');
+    expect(destinationFor(me([member(ORG_A, 'owner')], ORG_A, true))).toBe('/menu');
+  });
+
+  it('get a link to the admin shell from the other shells only', () => {
+    expect(adminLinkFor(me([member(ORG_A, 'owner')], ORG_A, true), 'owner')).toBe(
+      '/admin/organizations',
+    );
+    expect(adminLinkFor(me([], null, true), 'admin')).toBeNull();
+    expect(adminLinkFor(me([member(ORG_A, 'owner')]), 'owner')).toBeNull();
   });
 });

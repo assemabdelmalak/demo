@@ -5,6 +5,7 @@ import { cache } from 'react';
 import { serverApiClient } from './api.server';
 import {
   activeMembership,
+  destinationFor,
   homeForRole,
   type Me,
   type Membership,
@@ -56,13 +57,16 @@ export interface ShellContext {
 /**
  * Gate for a signed-in route group (ADR-030): signed-out visitors go to sign-in, people without
  * an organisation to onboarding, and members whose role belongs to another shell to their own
- * home. The admin shell has no gate beyond sign-in yet: `/v1/me` does not say who is a super
- * admin, so its pages are empty and unlinked until the admin guard lands (P1-T06).
+ * home. The admin shell is for super admins only (`isSuperAdmin`, which the API sets exactly when
+ * its admin guard would let the session in, ADR-027); anyone else goes where they belong.
  */
 export async function requireShell(shell: Shell): Promise<ShellContext> {
   const me = await requireSignedIn();
   const membership = activeMembership(me);
-  if (shell === 'admin') return { me, membership };
+  if (shell === 'admin') {
+    if (!me.isSuperAdmin) redirect(destinationFor(me));
+    return { me, membership };
+  }
   if (!membership) redirect(ONBOARDING_PATH);
   if (shellForRole(membership.role) !== shell) redirect(homeForRole(membership.role));
   return { me, membership };

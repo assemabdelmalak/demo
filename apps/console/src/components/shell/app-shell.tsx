@@ -8,7 +8,7 @@ import { UserMenu } from './user-menu';
 
 import { LanguageSwitch } from '@/components/language-switch';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { NAV_ITEMS, type Shell } from '@/lib/navigation';
+import { adminLinkFor, NAV_ITEMS, type Shell } from '@/lib/navigation';
 import { type ShellContext } from '@/lib/session.server';
 import { parseConsoleTheme, THEME_COOKIE } from '@/lib/theme';
 
@@ -28,8 +28,10 @@ export async function AppShell({
 }) {
   const t = await getTranslations();
   const theme = parseConsoleTheme((await cookies()).get(THEME_COOKIE)?.value);
-  const links = NAV_ITEMS[shell].map((item) => ({ href: item.href, label: t(`nav.${item.key}`) }));
   const { me, membership } = context;
+  const links = NAV_ITEMS[shell].map((item) => ({ href: item.href, label: t(`nav.${item.key}`) }));
+  const adminHref = adminLinkFor(me, shell);
+  if (adminHref) links.push({ href: adminHref, label: t('shell.admin') });
   const heading = shell === 'admin' ? t('shell.admin') : (membership?.name ?? t('brand'));
 
   return (

@@ -45,8 +45,8 @@ export interface NavItem {
 }
 
 /**
- * Navigation per shell. The first item is the shell's home. The admin shell is reachable by URL
- * only until the API tells the console who is a super admin (P1-T06); no shell links to it.
+ * Navigation per shell. The first item is the shell's home. Super admins also get a link to the
+ * admin shell from the others (`adminLinkFor`).
  */
 export const NAV_ITEMS: Readonly<Record<Shell, readonly NavItem[]>> = {
   owner: [
@@ -146,12 +146,19 @@ export function signInHref(path: string | null | undefined): string {
 
 /**
  * Where a signed-in person goes: the page they asked for (an invitation, typically; a shell page
- * still sends someone without an organisation to onboarding), else onboarding while they belong
- * to no organisation, else their role's home.
+ * still sends someone without an organisation to onboarding), else their role's home, else the
+ * admin shell for a super admin, else onboarding while they belong to no organisation.
  */
 export function destinationFor(me: Me, next?: string | null): string {
   const asked = safeNextPath(next);
   if (asked && asked !== '/') return asked;
   const membership = activeMembership(me);
-  return membership ? homeForRole(membership.role) : ONBOARDING_PATH;
+  if (membership) return homeForRole(membership.role);
+  // A platform operator usually belongs to no restaurant.
+  return me.isSuperAdmin ? homeForShell('admin') : ONBOARDING_PATH;
+}
+
+/** The admin shell's home for a super admin outside it; nothing for anyone else. */
+export function adminLinkFor(me: Me, shell: Shell): string | null {
+  return me.isSuperAdmin && shell !== 'admin' ? homeForShell('admin') : null;
 }
