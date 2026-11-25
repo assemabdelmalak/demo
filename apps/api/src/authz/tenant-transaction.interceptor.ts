@@ -16,8 +16,8 @@ import { DB } from '../db/db.module';
 
 /**
  * Runs each tenant-scoped handler inside one `withTenant` transaction (ADR-024), with the request
- * context in AsyncLocalStorage. Repositories extending `BaseTenantRepository`, and later
- * `AuditService` and `OutboxService`, all join that transaction.
+ * context in AsyncLocalStorage. Repositories extending `BaseTenantRepository`, `AuditService`
+ * and `OutboxService` all join that transaction; the outbox's publish runs after it commits.
  *
  * The transaction commits before the value reaches Nest, so the response is only sent once the
  * change is durable; a thrown error rolls it back. Registered after the idempotency interceptor,

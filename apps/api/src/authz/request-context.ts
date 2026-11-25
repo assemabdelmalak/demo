@@ -9,8 +9,8 @@ import { type AuthSession } from '../auth/auth-session';
 
 /**
  * What the request is and who makes it, resolved by `AuthzGuard` and available to every service
- * the handler calls (ADR-024). `AuditService` and `OutboxService` (P1-T07) enrich their rows
- * from it.
+ * the handler calls (ADR-024). `AuditService` takes each entry's actor, restaurant, request ID
+ * and client IP from it (ADR-031).
  */
 export interface RequestContextState {
   requestId: string;
