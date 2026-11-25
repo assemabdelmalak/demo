@@ -63,6 +63,16 @@ describe('.env.example', () => {
   });
 });
 
+describe('database credentials', () => {
+  it("gives the worker its own role's URL and never the API's", () => {
+    expect(schemaKeys('worker')).toContain('DATABASE_URL_WORKER');
+    expect(schemaKeys('worker')).not.toContain('DATABASE_URL');
+    expect(schemaKeys('worker')).not.toContain('DATABASE_URL_ADMIN');
+    expect(schemaKeys('api')).not.toContain('DATABASE_URL_WORKER');
+    expect(new URL(example.DATABASE_URL_WORKER ?? '').username).toBe('app_worker');
+  });
+});
+
 describe('parseEnv', () => {
   it('lists every missing required variable, not just the first', () => {
     const { DATABASE_URL: _db, REDIS_URL: _redis, ...rest } = example;
@@ -182,12 +192,12 @@ describe('loadEnv / loadEnvOrExit', () => {
       throw new Error('process.exit');
     });
     const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    const { DATABASE_URL: _db, ...rest } = example;
+    const { DATABASE_URL_WORKER: _db, ...rest } = example;
 
     expect(() => loadEnvOrExit('worker', rest)).toThrow('process.exit');
 
     expect(exit).toHaveBeenCalledWith(1);
-    expect(stderr.mock.calls.join('')).toContain('DATABASE_URL: is required');
+    expect(stderr.mock.calls.join('')).toContain('DATABASE_URL_WORKER: is required');
   });
 });
 

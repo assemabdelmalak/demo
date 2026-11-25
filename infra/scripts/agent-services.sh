@@ -44,6 +44,11 @@ if [ ! -f "$ROOT/.env" ]; then
   # Redis here listens on 6399 with a password; .env.example points at the compose Valkey.
   sed -i 's#^REDIS_URL=.*#REDIS_URL=redis://:valkey@127.0.0.1:6399/0#' "$ROOT/.env"
 fi
+# Variables .env.example gained after .env was made (e.g. DATABASE_URL_WORKER) are appended.
+while IFS= read -r line; do
+  [[ "$line" =~ ^([A-Z][A-Z0-9_]*)= ]] || continue
+  grep -q "^${BASH_REMATCH[1]}=" "$ROOT/.env" || printf '%s\n' "$line" >> "$ROOT/.env"
+done < "$ROOT/.env.example"
 
 echo "postgres: $(as_pg "$PGB/pg_isready" -h "$RUN" -p 5432 | sed 's/.* - //')   redis 6398/6399: $(redis-cli -p 6398 -a valkey ping 2>/dev/null)/$(redis-cli -p 6399 -a valkey ping 2>/dev/null)"
 echo "next: pnpm install && pnpm db:migrate   (the dev database needs migrating after schema changes)"

@@ -152,7 +152,13 @@ export const apiEnvSchema = z
 export const workerEnvSchema = z.object({
   ...common,
   ...publicUrls,
-  ...database,
+  /**
+   * The worker connects as `app_worker` (ADR-021), the only role that may claim outbox events
+   * across organisations (ADR-028). Its own variable, not `DATABASE_URL`: locally one `.env`
+   * serves every app, and the worker must never hold the API's credential, nor the API its.
+   */
+  DATABASE_URL_WORKER: url,
+  DATABASE_POOL_MAX: database.DATABASE_POOL_MAX,
   ...valkey,
   ...storage,
   ...ai,
