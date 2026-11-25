@@ -14,6 +14,7 @@ import { ZodError } from 'zod';
 import { loggerOptions } from '@radd/config/logging';
 import { type Mailer } from '@radd/mail';
 import { DomainError } from '@radd/shared';
+import { type RealtimePublisher } from '@radd/shared/realtime-publisher';
 
 import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
@@ -29,6 +30,7 @@ import { IdempotencyModule } from './idempotency/idempotency.module';
 import { type IdempotencyOptions } from './idempotency/idempotency.store';
 import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { OutboxModule } from './outbox/outbox.module';
 import { QueuesModule } from './queues/queues.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
 import { StaffModule, type StaffModuleOptions } from './staff/staff.module';
@@ -67,6 +69,8 @@ export interface AppModuleOptions {
   auth?: AuthModuleOptions;
   /** PIN lockout windows; tests shorten them. */
   staff?: StaffModuleOptions;
+  /** Replaces the Redis emitter behind the outbox, e.g. to simulate Valkey failing. */
+  realtime?: RealtimePublisher;
 }
 
 @Module({})
@@ -108,6 +112,7 @@ export class AppModule {
         // (see AuthzModule).
         AuthzModule,
         AuditModule,
+        OutboxModule.register(options.realtime),
         AuthModule.register(options.auth),
         OrganizationsModule,
         RestaurantsModule,
