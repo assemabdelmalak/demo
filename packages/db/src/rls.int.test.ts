@@ -618,11 +618,61 @@ describe.skipIf(!runtime.ready)('tenant isolation (SECURITY §3, ADR-022)', () =
          where n.nspname = 'public' and p.prosecdef
          order by 1`);
       expect(rows.map((row) => row.name)).toEqual([
+        'claim_outbox_events',
         'is_published_menu_version',
+        'mark_outbox_events_dispatched',
         'restaurant_org',
         'staff_device_by_token_hash',
       ]);
       expect(rows.filter((row) => !row.pinned || row.public)).toEqual([]);
+    });
+
+    it('lets only the worker claim and mark outbox events across organisations (ADR-028)', async () => {
+      const { rows } = await catalog.query<{ fn: string; role: string; allowed: boolean }>(`
+        select f.fn, r.rolname::text as role, has_function_privilege(r.oid, f.fn, 'EXECUTE') as allowed
+          from unnest(array[
+                 'claim_outbox_events(interval, integer)',
+                 'mark_outbox_events_dispatched(bigint[])'
+               ]) as f(fn)
+         cross join pg_roles r
+         where r.rolname in ('app_runtime', 'app_worker', 'app_admin')
+         order by 1, 2`);
+      expect(rows).toEqual([
+        { fn: 'claim_outbox_events(interval, integer)', role: 'app_admin', allowed: false },
+        { fn: 'claim_outbox_events(interval, integer)', role: 'app_runtime', allowed: false },
+        { fn: 'claim_outbox_events(interval, integer)', role: 'app_worker', allowed: true },
+        { fn: 'mark_outbox_events_dispatched(bigint[])', role: 'app_admin', allowed: false },
+        { fn: 'mark_outbox_events_dispatched(bigint[])', role: 'app_runtime', allowed: false },
+        { fn: 'mark_outbox_events_dispatched(bigint[])', role: 'app_worker', allowed: true },
+      ]);
+
+      // The API role is refused even inside a tenant transaction: it could otherwise read every
+      // organisation's events through the function.
+      const claim = sql`select * from claim_outbox_events(interval '0', 10)`;
+      const mark = sql`select mark_outbox_events_dispatched('{1}'::bigint[])`;
+      for (const statement of [claim, mark]) {
+        expect(await pgCode(app.db.execute(statement))).toBe(INSUFFICIENT_PRIVILEGE);
+        expect(
+          await pgCode(probe(app.db, orgA.organizationId, (tx) => tx.execute(statement))),
+        ).toBe(INSUFFICIENT_PRIVILEGE);
+      }
+
+      // The worker sees organisation A's fixture event through the function only (it has no
+      // privilege on the table), and only inside its own transaction's lock.
+      expect(await pgCode(worker.db.execute(sql`select count(*) from outbox_events`))).toBe(
+        INSUFFICIENT_PRIVILEGE,
+      );
+      let claimed: string[] = [];
+      await worker.db
+        .transaction(async (tx) => {
+          const result = await tx.execute<{ organization_id: string }>(claim);
+          claimed = result.rows.map((row) => row.organization_id);
+          throw new Rollback();
+        })
+        .catch((error: unknown) => {
+          if (!(error instanceof Rollback)) throw error;
+        });
+      expect(claimed).toContain(orgA.organizationId);
     });
 
     it('lets no application role change the schema', async () => {
