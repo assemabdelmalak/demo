@@ -13,6 +13,12 @@ export interface TenantScope {
   organizationId: string;
   /** The transaction that carries `app.org_id`; every query of the request must use it. */
   tx: DbTransaction;
+  /**
+   * Queues work to run once this transaction has committed, never after a rollback: the outbox's
+   * realtime publish (ADR-028). Tasks run in order and must handle their own errors; one that
+   * throws anyway is ignored, because the change it follows is already durable.
+   */
+  afterCommit: (task: () => Promise<void>) => void;
 }
 
 const tenantStorage = new AsyncLocalStorage<TenantScope>();
@@ -35,10 +41,18 @@ export async function withTenant<T>(
   // Checked here rather than left to the `::uuid` cast in the policy, which would fail on the
   // first query with a less obvious error.
   if (!isUuid(organizationId)) throw new TypeError('withTenant needs an organisation UUID');
-  return db.transaction(async (tx) => {
+  const committed: (() => Promise<void>)[] = [];
+  const result = await db.transaction(async (tx) => {
     await tx.execute(sql`select set_config('app.org_id', ${organizationId}, true)`);
-    return tenantStorage.run({ organizationId, tx }, () => fn(tx));
+    const afterCommit = (task: () => Promise<void>) => {
+      committed.push(task);
+    };
+    return tenantStorage.run({ organizationId, tx, afterCommit }, () => fn(tx));
   });
+  for (const task of committed) {
+    await task().catch(() => undefined);
+  }
+  return result;
 }
 
 /**
