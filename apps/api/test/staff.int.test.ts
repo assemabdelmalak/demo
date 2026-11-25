@@ -558,6 +558,50 @@ describe.skipIf(!runtime.ready)('staff devices and PIN sessions (ADR-026)', () =
         [theirs],
       );
       expect(still?.revoked_at).toBeNull();
+
+      // Every change on the way was audited, by whoever made it; refused calls left no entry.
+      const entries = await query<Record<string, unknown>>(
+        `select action, actor_type, actor_id, restaurant_id, entity_id, after
+           from audit_logs where organization_id = $1 and action like any (array['member.%', 'staff%'])
+          order by id`,
+        [t.org.id],
+      );
+      expect(entries).toEqual([
+        expect.objectContaining({
+          action: 'member.pin.set',
+          actor_type: 'user',
+          actor_id: t.manager.userId,
+          restaurant_id: null,
+          entity_id: t.members.staff,
+          after: { hasPin: true, pinDisabled: false },
+        }),
+        expect.objectContaining({
+          action: 'staff_device.register',
+          actor_id: t.manager.userId,
+          restaurant_id: t.restaurant.id,
+          entity_id: deviceId,
+        }),
+        // The switch is a public route: the member whose PIN matched is the actor.
+        expect.objectContaining({
+          action: 'staff.pin_switch',
+          actor_type: 'user',
+          actor_id: t.staff.userId,
+          restaurant_id: t.restaurant.id,
+          entity_id: t.members.staff,
+          after: { staffDeviceId: deviceId, sessionId: pinSession?.id },
+        }),
+        expect.objectContaining({
+          action: 'staff_device.revoke',
+          actor_id: t.owner.userId,
+          restaurant_id: t.restaurant.id,
+          entity_id: deviceId,
+          after: expect.objectContaining({ endedSessions: 1 }) as unknown,
+        }),
+      ]);
+      // The PIN and the device token never reach the log.
+      const text = JSON.stringify(entries);
+      expect(text).not.toContain('2580');
+      expect(text).not.toMatch(/argon2|token/i);
     });
   });
 });

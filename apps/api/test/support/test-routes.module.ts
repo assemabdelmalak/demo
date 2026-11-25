@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { RestaurantsRepository } from '@radd/db';
 import { DomainError, type MemberActor, uuidv7 } from '@radd/shared';
 
+import { AuditService } from '../../src/audit/audit.service';
 import { CurrentActor, Public, RequirePermission } from '../../src/authz/access.decorators';
 import { RequestContext } from '../../src/authz/request-context';
 import { Idempotent } from '../../src/idempotency/idempotent.decorator';
@@ -155,6 +156,7 @@ class TenantTestController {
   constructor(
     private readonly context: RequestContext,
     private readonly restaurants: RestaurantsRepository,
+    private readonly audit: AuditService,
   ) {}
 
   /** Writes a restaurant in the request transaction, then fails: the write must roll back. */
@@ -163,6 +165,41 @@ class TenantTestController {
   async writeThenThrow(@Body() body: SlugBody): Promise<never> {
     const row = await this.restaurants.create({ name: { en: 'Rolled back' }, slug: body.slug });
     throw new DomainError('CONFLICT', { detail: `wrote ${row?.id ?? 'nothing'}, then failed` });
+  }
+
+  /** Writes a restaurant and its audit entry, then fails: both must roll back together. */
+  @Post('audit-then-throw')
+  @RequirePermission('restaurant.create')
+  async auditThenThrow(@Body() body: SlugBody): Promise<never> {
+    const row = await this.restaurants.create({ name: { en: 'Rolled back' }, slug: body.slug });
+    await this.audit.record({
+      action: 'test.rolled_back',
+      entityType: 'restaurant',
+      entityId: row?.id ?? body.slug,
+      after: { slug: body.slug },
+    });
+    throw new DomainError('CONFLICT', { detail: 'audited, then failed' });
+  }
+
+  /** Audits a state full of values that must never be stored (SECURITY §2 "Never log"). */
+  @Post('audit-sensitive')
+  @RequirePermission('restaurant.create')
+  async auditSensitive(): Promise<{ id: string }> {
+    const id = uuidv7();
+    await this.audit.record({
+      action: 'test.sensitive',
+      entityType: 'payment',
+      entityId: id,
+      after: {
+        amountMinor: 1500,
+        externalReference: 'WHISH-55501234',
+        pin: 'pin-zqx-7731',
+        session: { token: 'secret-session-token' },
+        clientIp: this.context.clientIp,
+        note: this.context.clientIp,
+      },
+    });
+    return { id };
   }
 
   /** What services see through `RequestContext`. */

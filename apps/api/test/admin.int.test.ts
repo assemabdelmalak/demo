@@ -236,6 +236,35 @@ describe.skipIf(!runtime.ready)('super admin (ADR-027)', () => {
         (await owner.client.patch(`/v1/admin/orgs/${org.id}`, { plan: 'bundle' })).statusCode,
       ).toBe(403);
 
+      // Both changes were audited in the admin transaction, as the super admin; the refused and
+      // invalid calls left nothing.
+      const audited = await query<Record<string, unknown>>(
+        `select organization_id, actor_type, actor_id, before, after, request_id, ip_hash
+           from audit_logs where action = 'admin.organization.update' and entity_id = $1
+          order by id`,
+        [org.id],
+      );
+      expect(audited).toEqual([
+        {
+          organization_id: org.id,
+          actor_type: 'super_admin',
+          actor_id: admin.userId,
+          before: { status: 'active', plan: 'free' },
+          after: { status: 'suspended', plan: 'free' },
+          request_id: suspended.headers['x-request-id'],
+          ip_hash: expect.stringMatching(/^[\w-]{43}$/) as unknown,
+        },
+        {
+          organization_id: org.id,
+          actor_type: 'super_admin',
+          actor_id: admin.userId,
+          before: { status: 'suspended', plan: 'free' },
+          after: { status: 'active', plan: 'pro' },
+          request_id: upgraded.headers['x-request-id'],
+          ip_hash: expect.stringMatching(/^[\w-]{43}$/) as unknown,
+        },
+      ]);
+
       // The calls went through the admin role's own pool, nothing else.
       const connections = await query<{ usename: string }>(
         `select distinct usename::text from pg_stat_activity where application_name = 'radd-api-admin'`,
@@ -270,15 +299,41 @@ describe.skipIf(!runtime.ready)('super admin (ADR-027)', () => {
         { origin: API_ORIGIN },
       );
       expect(ownPage.statusCode).toBeLessThan(300);
-      expect(
-        (
-          await admin.client.put(
-            '/v1/admin/queues/api/queues/noop/resume',
-            {},
-            { origin: API_ORIGIN },
-          )
-        ).statusCode,
-      ).toBeLessThan(300);
+      const resumed = await admin.client.put(
+        '/v1/admin/queues/api/queues/noop/resume',
+        {},
+        { origin: API_ORIGIN },
+      );
+      expect(resumed.statusCode).toBeLessThan(300);
+
+      // Each accepted change is a platform entry: no organisation, the super admin as actor. The
+      // entry is written after the response, so it may land a moment later.
+      const entries = async () =>
+        query<Record<string, unknown>>(
+          `select organization_id, actor_type, actor_id, action, entity_id, request_id
+             from audit_logs where entity_type = 'queue' order by id`,
+        );
+      for (let tries = 0; (await entries()).length < 2 && tries < 50; tries += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      expect(await entries()).toEqual([
+        {
+          organization_id: null,
+          actor_type: 'super_admin',
+          actor_id: admin.userId,
+          action: 'admin.queues.put',
+          entity_id: '/v1/admin/queues/api/queues/noop/pause',
+          request_id: ownPage.headers['x-request-id'],
+        },
+        {
+          organization_id: null,
+          actor_type: 'super_admin',
+          actor_id: admin.userId,
+          action: 'admin.queues.put',
+          entity_id: '/v1/admin/queues/api/queues/noop/resume',
+          request_id: resumed.headers['x-request-id'],
+        },
+      ]);
     });
   });
 });
