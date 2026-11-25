@@ -48,7 +48,7 @@ together and see a per-person tab; restaurants import menus with AI, confirm all
 | Phase | Name | State |
 |---|---|---|
 | P0 | Foundation | ✅ merged to `master` ([PR #1](https://github.com/assemabdelmalak/demo/pull/1)), owner sign-off 2026-11-10 |
-| **P1** | **Data model, auth, tenancy** | **🟨 in progress** (T01–T06 done; T07, T08, security review, docs + PR left) |
+| **P1** | **Data model, auth, tenancy** | **🟨 in progress** (T01–T07 done; T08, security review, docs + PR left) |
 | P2 | Restaurant setup and menu management (console) | ⬜ |
 | P3 | Diner menu PWA | ⬜ |
 | P4 | Table sessions and group ordering | ⬜ |
@@ -72,16 +72,16 @@ The owner approved the plan in `docs/plans/phase-01-plan.md` on 2026-11-11; its 
 | P1-T04 Better Auth (.a server, .b console, .c orgs + invites) | ✅ CI green | ADR text not written yet (§9) |
 | P1-T05 Authorisation layer | ✅ CI green ([CI 52](https://github.com/assemabdelmalak/demo/actions/runs/43926461166)) | ADR text not written yet (§9) |
 | P1-T06 Super admin, staff devices, PIN | ✅ CI green ([CI 62](https://github.com/assemabdelmalak/demo/actions/runs/45254520210), [Docker 34](https://github.com/assemabdelmalak/demo/actions/runs/45254520229)) | Done 2026-11-23, see §12 |
-| P1-T07 Audit and outbox | ⬜ **next** | |
-| P1-T08 Seed Beit Tayta | ⬜ | |
+| P1-T07 Audit and outbox | ✅ CI green ([CI 68](https://github.com/assemabdelmalak/demo/actions/runs/45630173651), [Docker 38](https://github.com/assemabdelmalak/demo/actions/runs/45630173552)) | Done 2026-11-25, see §12 |
+| P1-T08 Seed Beit Tayta | ⬜ **next** | |
 | Security review of Phase 1 | ⬜ | Started twice before and cut off; never finished |
 | Docs pass, Phase 1 PR, demo checkpoint | ⬜ | Stops for the owner's review |
 
-**Last verified numbers (2026-11-23, after P1-T06):** lint, typecheck, format, i18n sync and
-build pass. Unit tests: api 98, shared 509, config 58, console 50, ui 46, db 15, mail 10,
-worker 9, diner 6, api-client 2. Integration: api 107, db 33, worker 9, config 2 of 4 (the other
-2 assert PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16 by design; green in CI).
-Playwright: 49 passed (en + ar) against the full local stack.
+**Last verified numbers (2026-11-25, after P1-T07):** lint, typecheck, format, i18n sync,
+OpenAPI drift and build pass. Unit tests: shared 524, api 104, config 59, console 50, ui 46,
+db 15, mail 10, worker 9, diner 6, api-client 2. Integration: api 114, db 41, worker 14, config 2
+of 4 (the other 2 assert PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16 by
+design; green in CI). Playwright: 49 passed (en + ar) against the full local stack.
 
 ---
 
@@ -89,15 +89,16 @@ Playwright: 49 passed (en + ar) against the full local stack.
 
 Each has a detailed prompt in `docs/sessions/`; the universal prompt in §0 also works.
 
-1. **P1-T07 Audit and outbox** — `docs/sessions/02-p1-t07.md`. Also: the audit seam now has
-   `organizationId: null` and `outsideNest` entries from Bull Board (raw Fastify, no Nest request
-   context); `AuditService` must write those as `super_admin` actor rows with no tenant.
-2. **P1-T08 Seed "Beit Tayta"** — `docs/sessions/03-p1-t08.md`.
-3. **Security review of Phase 1** — `docs/sessions/04-security-review.md`. Include the new
-   surface: the PIN switch (public route), PIN sessions, device cookie, `/v1/admin/*`, Bull Board.
-4. **Docs pass, Phase 1 PR, demo checkpoint** — `docs/sessions/05-docs-and-pr.md`. Stops and
+1. **P1-T08 Seed "Beit Tayta"** — `docs/sessions/03-p1-t08.md`. Seeded rows are written by the
+   seed directly, not through the API, so they produce no audit entries or outbox events; that
+   is expected.
+2. **Security review of Phase 1** — `docs/sessions/04-security-review.md`. Include the new
+   surface: the PIN switch (public route), PIN sessions, device cookie, `/v1/admin/*`, Bull Board,
+   and from P1-T07 the outbox definer functions (`app_worker` only), `DATABASE_URL_WORKER`, the
+   audit redaction list (`apps/api/src/audit/audit-state.ts`) and the `afterCommit` hook.
+3. **Docs pass, Phase 1 PR, demo checkpoint** — `docs/sessions/05-docs-and-pr.md`. Stops and
    waits for the owner.
-5. **Phase 2 plan** — start in plan mode: summarise the phase goal, list P2-T01…T11 and the files
+4. **Phase 2 plan** — start in plan mode: summarise the phase goal, list P2-T01…T11 and the files
    to touch, list open questions, wait for approval (CLAUDE §2.2). Then one task per session.
 
 After Phase 1 the queue is the plan itself, task by task (titles from `IMPLEMENTATION_PLAN.md`):
@@ -146,8 +147,8 @@ demo checkpoint (CLAUDE §2.5).
   branch, fast-forward it to your work (`git push origin HEAD:phase/01-data-auth-tenancy`; never
   force). If not, say in your report that the phase branch needs fast-forwarding, and record your
   branch in §12.
-- **Right now:** nothing pending. P1-T06 was done on `claude/modest-einstein-d0pg1n` and the
-  phase branch was fast-forwarded to it with the owner's approval, so start from
+- **Right now:** nothing pending. P1-T07 was done on `claude/upbeat-ride-z192ey` and the phase
+  branch was fast-forwarded to it (the owner's prompt allowed it), so start from
   `origin/phase/01-data-auth-tenancy`.
 
 ---
@@ -163,7 +164,8 @@ git status --short                       # anything uncommitted is unfinished wo
 ```
 
 - The cloud container has **no Docker**. `agent-services.sh` replaces `pnpm dev:infra`. Run it
-  again whenever Postgres or Redis is down (the container stops them when idle).
+  again whenever Postgres or Redis is down (the container stops them when idle). It also appends
+  any variable `.env.example` gained to an existing `.env` (e.g. `DATABASE_URL_WORKER`).
 - A new shell loses the environment: `source infra/scripts/agent-env.sh` again.
 - On a normal developer machine with Docker, ignore both scripts and follow the README.
 
@@ -211,6 +213,13 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 - **The API cannot import `drizzle-orm`** (CommonJS API vs ESM types). Queries and repositories
   live in `packages/db`. Inside a Drizzle `sql` template, columns render **without their table**:
   qualify by hand in correlated subqueries.
+- **Every mutation is audited** with `AuditService.record(...)` inside its tenant transaction
+  (`recordIn` for the admin pool, `recordPlatform` for entries with no organisation); never pass
+  secrets in `before`/`after` (a redaction list is only the backstop). **Realtime changes** go
+  through `OutboxService.add(tx, ...)` in the same transaction, with rooms from `realtimeRooms`
+  (`@radd/shared`); never emit to Socket.IO directly. ADR-028, ADR-031.
+- **The worker reads `DATABASE_URL_WORKER`** (`app_worker`), not `DATABASE_URL`. A worker test
+  without a database passes `outbox: false` to `WorkerModule.register`.
 - **Every API route declares a policy** (`@RequirePermission`, `@AuthenticatedOnly`, `@Public`,
   `@RequireSuperAdmin`); `apps/api/test/route-policy.test.ts` also pins the exact list of public
   and super-admin routes. Every new console route also gets a row in the matrix in
@@ -235,7 +244,7 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 | Project rules | `CLAUDE.md` |
 | Tasks and acceptance criteria | `docs/IMPLEMENTATION_PLAN.md` |
 | Approved Phase 1 plan and design decisions | `docs/plans/phase-01-plan.md` |
-| Decisions made so far | `docs/DECISIONS.md` (ADR-001…022 written; 023…030 pending, §9) |
+| Decisions made so far | `docs/DECISIONS.md` (ADR-001…022, 028 and 031 written; 023…027, 029, 030 pending, §9) |
 | Detailed per-task log, "Needs owner" | `docs/PROGRESS.md` |
 | Database: schema, migrations, RLS, tenant helpers, test DB | `packages/db/src/schema/*`, `packages/db/drizzle/*`, `packages/db/sql/bootstrap-roles.sql`, `packages/db/src/tenant.ts`, `packages/db/src/testing/*` |
 | Auth server (Better Auth bridge, sessions, PIN-session gate) | `apps/api/src/auth/*` |
@@ -243,7 +252,8 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 | Staff devices, PINs, PIN switch | `apps/api/src/staff/*`, `packages/db/src/staff-queries.ts`, `packages/db/src/repositories/staff-devices.ts` |
 | Super admin (`/v1/admin/orgs`, Bull Board) | `apps/api/src/admin/*`, `packages/db/src/admin-queries.ts` |
 | Organisations, invitations, restaurants | `apps/api/src/organizations/*`, `apps/api/src/restaurants/*` |
-| Audit placeholder (replace in T07) | `apps/api/src/audit/audit.seam.ts` (grep `recordAuditLater`) |
+| Audit log | `apps/api/src/audit/*` (`AuditService`, IP hash and redaction in `audit-state.ts`), `packages/db/src/audit-queries.ts` |
+| Outbox and realtime | `apps/api/src/outbox/*`, `packages/db/src/outbox-queries.ts`, `packages/shared/src/realtime.ts` (rooms, envelope), `packages/shared/src/realtime-publisher.ts` (Redis emitter), worker `apps/worker/src/outbox/*`, migration `packages/db/drizzle/0006_outbox_dispatch.sql` |
 | Mail | `packages/mail`; worker processor `apps/worker/src/processors/notify-email.processor.ts` |
 | Console account pages and shells | `apps/console/src/app/(auth)`, `(owner)`, `(staff)`, `(kitchen)`, `(admin)`; gates in `apps/console/src/lib/session.server.ts` |
 | Integration test patterns | `apps/api/test/*.int.test.ts`, `apps/api/test/support/*` |
@@ -254,7 +264,9 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 
 - `docs/PROGRESS.md`: rows for P1-T03 (mark ✅, CI 41 / Docker 23), P1-T04.a/.b/.c and P1-T05
   (CI 52 / Docker 31). P1-T06 has its row.
-- `docs/DECISIONS.md`: write ADR-023 to ADR-030 from `docs/plans/phase-01-plan.md`, as built:
+- `docs/DECISIONS.md`: write ADR-023 to ADR-027, ADR-029 and ADR-030 from
+  `docs/plans/phase-01-plan.md`, as built (ADR-028 outbox and ADR-031 audit were written in
+  P1-T07):
   - ADR-023: Better Auth responses keep their JSON shape under `/v1/auth/*`; malformed IDs give
     400 `INVALID_ID`; link-based reset and verification, social sign-in and emailed two-factor
     codes are disabled; `verify-email` cannot sign in a verified or two-factor account; the Origin
@@ -277,7 +289,8 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
     successful change goes to the audit seam with no organisation.
   - ADR-029: codes are sent by the API directly, invitations through `notify.email`; new package
     `packages/mail`; invitations last 7 days.
-  - New ADR: `.pnpmfile.cjs` (Better Auth's framework peers; valibot's TypeScript peer).
+  - New ADR (next free number, ADR-032): `.pnpmfile.cjs` (Better Auth's framework peers;
+    valibot's TypeScript peer).
 - `docs/API.md` §2, §4 and §5: `/v1/auth/*` exception, `x-radd-locale` header, `GET /v1/me`
   (with `isSuperAdmin`), organisation, invitation, restaurant, staff-device, member-PIN, switch
   and admin endpoints; error codes `EMAIL_NOT_VERIFIED`, `NOT_A_MEMBER`, `ORG_SUSPENDED`,
@@ -285,8 +298,8 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
   and Better Auth's `PIN_SESSION_FORBIDDEN` under `/v1/auth/*`.
 - `IMPLEMENTATION_PLAN.md` P1-T06 says the device cookie is on "the console origin": it is on the
   API host (ADR-026, corrected by the approved plan).
-- `CLAUDE.md` §5 repository layout: add `packages/mail`. `DEPLOYMENT.md`: worker connects as
-  `app_worker` (decide the variable in T07); the API needs `DATABASE_URL_ADMIN`.
+- `CLAUDE.md` §5 repository layout: add `packages/mail`. (`DEPLOYMENT.md` now names
+  `DATABASE_URL_WORKER` for the worker and `DATABASE_URL_ADMIN` for the API, done in P1-T07.)
 
 ## 10. Known risks, not yet addressed
 
@@ -306,9 +319,24 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
     "confirm with your code" step-up page in the console yet.
   - Bull Board's page loads its font from Google Fonts, so an admin's browser contacts Google
     (admin only; no diner data). Self-host or drop it in P10 if it matters.
-  - Bull Board changes are only sent to the audit seam, which writes nothing until T07.
   - The console's `/admin/organizations` and `/admin/queues` pages are still empty shells
     (P9-T03 builds the admin console).
+- **New in P1-T07:**
+  - Where Better Auth writes on its own connection (organisation create and rename,
+    invitations), the change and its audit entry are separate commits: a failure between them
+    leaves the change unaudited. Our own repositories' changes roll back with their entry.
+  - Sign-in and sign-out are not audited yet (`recordPlatform` supports it when wanted).
+  - A mutation that emits waits for the Valkey publish; with Valkey down that adds up to about
+    1 s, and the worker delivers the event later. No Phase 1 mutation emits yet.
+  - Dispatched outbox rows and audit rows are never purged (a `db.maintenance` retention job is
+    needed before launch).
+  - An outbox event that can never be delivered (unknown room or type) is logged, reported to
+    Sentry and marked dispatched, i.e. dropped loudly rather than retried forever.
+  - While Postgres is down, every 5-second outbox tick fails and is reported to Sentry.
+  - The P4 gateway must use `@socket.io/redis-adapter` with the emitter's defaults (key
+    `socket.io`, MessagePack), or it will not receive these events.
+  - The worker's production install grew from 98 to 124 MB raw (`@radd/db`: pg, drizzle,
+    argon2 binary); still well under the 250 MB image limit.
 
 ## 11. Owner: what only you can do
 
@@ -327,6 +355,32 @@ scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
 ## 12. Session log
 
 Newest first. Each session adds one entry: date, task, branch and head, result, CI, notes.
+
+### 2026-11-25 — P1-T07 audit and outbox · branch `claude/upbeat-ride-z192ey`
+- **What now works:** every change the API makes (ten so far) is written to the audit log, in the
+  same transaction as the change wherever our own code makes it (so a failed change leaves no
+  entry; Better Auth's own writes are the exception, §10), with who did it, which
+  organisation and restaurant, the request ID and a keyed hash of the caller's IP; super-admin
+  changes are logged as `super_admin`, Bull Board changes as platform entries with no
+  organisation; PINs, tokens, payment references and IP addresses never reach the log. The
+  outbox is in place: a change can record a realtime event in its transaction; after commit the
+  API sends it to Valkey (in order, to the right Socket.IO namespaces) and marks it sent; if
+  that fails, or the API dies in between, the worker (now connected to Postgres as `app_worker`)
+  re-sends it within about 5 seconds. Nothing listens yet (gateway in P4) and no Phase 1 change
+  emits yet (first producers in P2).
+- **Commits:** `68a2802` … `c343c8a` (migration 0006 and db queries, `AuditService` and the ten
+  call sites, `@radd/shared` realtime module and Redis-emitter adapter, `OutboxService`,
+  `DATABASE_URL_WORKER`, worker dispatcher, tests) plus the docs commit.
+- **Found on the way:** `@socket.io/redis-emitter` throws away the result of every Redis publish,
+  so a Valkey failure would have been missed (and the event marked sent). The adapter now
+  captures and awaits each publish.
+- **Decisions:** ADR-028 (outbox delivery, as built) and ADR-031 (audit entries) written. The
+  worker gets its own variable `DATABASE_URL_WORKER` and no longer reads `DATABASE_URL`.
+- **Test changes (explained):** the two existing worker suites run without a database, so they
+  now pass `outbox: false`; no assertion changed.
+- **CI:** green on the code head `c343c8a`: [CI 68](https://github.com/assemabdelmalak/demo/actions/runs/45630173651) (including `test-int` on PostgreSQL 17 and the e2e smoke with the worker on `app_worker`), [Docker 38](https://github.com/assemabdelmalak/demo/actions/runs/45630173552) (all four images) and Lighthouse 17. The phase branch was fast-forwarded to
+  this work.
+- **Session:** https://claude.ai/code/session_01YNpMisjRzCpwNVu3xFu29o
 
 ### 2026-11-23 — P1-T06 finished · branch `claude/modest-einstein-d0pg1n`
 - **What now works:** a manager registers a shared tablet (host-only HttpOnly cookie; only its

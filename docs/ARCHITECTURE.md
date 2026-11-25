@@ -271,7 +271,8 @@ In short:
 **Reliability:**
 - Transactional outbox. Every state change inserts an `outbox_events` row in the same transaction.
 - The API emits immediately after commit (fast path).
-- The `outbox.dispatch` worker re-emits anything not marked dispatched within 5 s (safety net).
+- The `outbox.dispatch` worker re-emits anything not marked dispatched within 5 s (safety net). It connects as `app_worker` and reaches other tenants' events only through two definer functions granted to it alone.
+- Both emit through `@socket.io/redis-emitter`; each room goes only to its own namespace, and every event carries its outbox ID so clients can drop duplicates. Until the gateway exists (P4-T03) events reach Valkey only (ADR-028).
 - Socket.IO connection-state recovery is on (2 min window).
 
 **Scale-out:**
