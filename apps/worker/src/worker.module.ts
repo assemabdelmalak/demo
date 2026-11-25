@@ -8,19 +8,29 @@ import { type Mailer } from '@radd/mail';
 import { DEFAULT_JOB_OPTIONS, QUEUE_PREFIX } from '@radd/shared';
 
 import { EnvModule, type WorkerEnv } from './config/env.module';
+import { WorkerDbModule } from './db/db.module';
 import { HeartbeatService } from './health/heartbeat.service';
 import { ProbeServer } from './health/probe.server';
 import { MailModule } from './mail/mail.module';
+import { OutboxModule, type OutboxModuleOptions } from './outbox/outbox.module';
 import { NoopProcessor } from './processors/noop.processor';
 import { NotifyEmailProcessor } from './processors/notify-email.processor';
 import { createWorkerConnection, WORKER_VALKEY } from './valkey';
 
-/** Queues that have a processor in this phase; the rest gain one as their features land. */
+/**
+ * Queues that have a processor in this phase; the rest gain one as their features land.
+ * `outbox.dispatch` is registered by `OutboxModule`.
+ */
 const PROCESSED_QUEUES = ['noop', 'notify.email'] as const;
 
 export interface WorkerModuleOptions {
   /** Replaces the configured mail adapter, e.g. with a `MemoryMailer` in tests. */
   mailer?: Mailer;
+  /**
+   * Outbox dispatch settings, or `false` to leave it out: only for tests that run without a
+   * database. Production always dispatches.
+   */
+  outbox?: OutboxModuleOptions | false;
 }
 
 @Module({})
@@ -47,6 +57,8 @@ export class WorkerModule implements OnApplicationShutdown {
         }),
         ...PROCESSED_QUEUES.map((name) => BullModule.registerQueue({ name })),
         MailModule.register(options.mailer),
+        WorkerDbModule,
+        ...(options.outbox === false ? [] : [OutboxModule.register(options.outbox)]),
       ],
       providers: [
         {

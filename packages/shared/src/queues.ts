@@ -39,6 +39,12 @@ export const invitationEmailJobSchema = z.strictObject({
   }),
 });
 
+/**
+ * `outbox.dispatch` (ADR-028): a tick of the worker's 5-second scheduler. It carries nothing; the
+ * outbox table says what to send.
+ */
+export const outboxDispatchPayloadSchema = z.strictObject({});
+
 /** `notify.email`: one variant per template sent through the queue. */
 export const notifyEmailPayloadSchema = z.discriminatedUnion('template', [
   invitationEmailJobSchema,
@@ -136,9 +142,9 @@ export const QUEUES = {
     description: 'expiry reminders, downgrade after grace (daily)',
   }),
   'outbox.dispatch': queue({
-    concurrency: 2,
-    payload: notYetDefined,
-    description: 'reliable domain events to sockets and integrations',
+    concurrency: 1,
+    payload: outboxDispatchPayloadSchema,
+    description: 're-emit outbox events the API did not mark dispatched (every 5 s)',
   }),
   noop: queue({
     concurrency: 1,

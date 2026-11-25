@@ -324,6 +324,9 @@ importers:
       '@radd/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@radd/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@radd/mail':
         specifier: workspace:*
         version: link:../../packages/mail

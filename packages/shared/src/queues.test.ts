@@ -50,6 +50,11 @@ describe('parseQueuePayload', () => {
     expect(() => parseQueuePayload('noop', { message: '' })).toThrow();
   });
 
+  it('takes an empty outbox tick and nothing else', () => {
+    expect(parseQueuePayload('outbox.dispatch', {})).toEqual({});
+    expect(() => parseQueuePayload('outbox.dispatch', { ids: [1] })).toThrow();
+  });
+
   it('accepts an invitation email and refuses anything that could carry a code', () => {
     const job = {
       template: 'invitation',
