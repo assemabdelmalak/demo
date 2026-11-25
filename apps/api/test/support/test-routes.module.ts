@@ -6,13 +6,14 @@ import { type FastifyReply } from 'fastify';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-import { RestaurantsRepository } from '@radd/db';
-import { DomainError, type MemberActor, uuidv7 } from '@radd/shared';
+import { currentTenantScope, RestaurantsRepository } from '@radd/db';
+import { DomainError, type MemberActor, realtimeRooms, uuidv7 } from '@radd/shared';
 
 import { AuditService } from '../../src/audit/audit.service';
 import { CurrentActor, Public, RequirePermission } from '../../src/authz/access.decorators';
 import { RequestContext } from '../../src/authz/request-context';
 import { Idempotent } from '../../src/idempotency/idempotent.decorator';
+import { OutboxService } from '../../src/outbox/outbox.service';
 
 class ItemParams extends createZodDto(z.object({ id: z.string().min(1).max(100) })) {}
 
@@ -133,6 +134,9 @@ class TestController {
 
 class SlugBody extends createZodDto(z.object({ slug: z.string().min(3).max(48) })) {}
 class RestaurantParam extends createZodDto(z.object({ rid: z.uuid() })) {}
+class OutboxBody extends createZodDto(
+  z.object({ count: z.number().int().min(1).max(5), fail: z.boolean().default(false) }),
+) {}
 
 /** Declares no access policy: the default-deny guard must refuse every route here. */
 @Controller('__test/undeclared')
@@ -157,6 +161,7 @@ class TenantTestController {
     private readonly context: RequestContext,
     private readonly restaurants: RestaurantsRepository,
     private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
   ) {}
 
   /** Writes a restaurant in the request transaction, then fails: the write must roll back. */
@@ -200,6 +205,34 @@ class TenantTestController {
       },
     });
     return { id };
+  }
+
+  /**
+   * Adds `count` events in the request transaction (each to the organisation's imports room and a
+   * session room), then fails if asked: a rolled-back event must never be emitted.
+   */
+  @Post('outbox')
+  @RequirePermission('restaurant.create')
+  async addEvents(@Body() body: OutboxBody): Promise<{ ids: string[]; sessionId: string }> {
+    const scope = currentTenantScope();
+    if (!scope) throw new Error('no tenant transaction');
+    const sessionId = uuidv7();
+    const ids: string[] = [];
+    for (let n = 0; n < body.count; n += 1) {
+      ids.push(
+        await this.outbox.add(scope.tx, {
+          type: 'test.changed',
+          aggregate: { type: 'test', id: sessionId },
+          rooms: [
+            realtimeRooms.organizationImports(scope.organizationId),
+            realtimeRooms.session(sessionId),
+          ],
+          payload: { n },
+        }),
+      );
+    }
+    if (body.fail) throw new DomainError('CONFLICT', { detail: 'events added, then failed' });
+    return { ids, sessionId };
   }
 
   /** What services see through `RequestContext`. */
