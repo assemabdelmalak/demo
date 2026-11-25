@@ -71,7 +71,7 @@ The owner approved the plan in `docs/plans/phase-01-plan.md` on 2026-11-11; its 
 | P1-T03 Roles and RLS | ✅ CI green (CI 41, Docker 23) | ADR-021; tenancy suite `packages/db/src/rls.int.test.ts` |
 | P1-T04 Better Auth (.a server, .b console, .c orgs + invites) | ✅ CI green | ADR text not written yet (§9) |
 | P1-T05 Authorisation layer | ✅ CI green ([CI 52](https://github.com/assemabdelmalak/demo/actions/runs/43926461166)) | ADR text not written yet (§9) |
-| P1-T06 Super admin, staff devices, PIN | ✅ done 2026-11-23, see §12 | Docker green; CI: see §12. On branch `claude/modest-einstein-d0pg1n` (§4) |
+| P1-T06 Super admin, staff devices, PIN | ✅ CI green ([CI 62](https://github.com/assemabdelmalak/demo/actions/runs/45254520210), [Docker 34](https://github.com/assemabdelmalak/demo/actions/runs/45254520229)) | Done 2026-11-23, see §12 |
 | P1-T07 Audit and outbox | ⬜ **next** | |
 | P1-T08 Seed Beit Tayta | ⬜ | |
 | Security review of Phase 1 | ⬜ | Started twice before and cut off; never finished |
@@ -146,9 +146,9 @@ demo checkpoint (CLAUDE §2.5).
   branch, fast-forward it to your work (`git push origin HEAD:phase/01-data-auth-tenancy`; never
   force). If not, say in your report that the phase branch needs fast-forwarding, and record your
   branch in §12.
-- **Pending right now:** P1-T06 lives on `claude/modest-einstein-d0pg1n` (9 commits plus docs on
-  top of `phase/01-data-auth-tenancy` at `d8fb2cb`). Unless the owner already fast-forwarded the
-  phase branch, start from `origin/claude/modest-einstein-d0pg1n`.
+- **Right now:** nothing pending. P1-T06 was done on `claude/modest-einstein-d0pg1n` and the
+  phase branch was fast-forwarded to it with the owner's approval, so start from
+  `origin/phase/01-data-auth-tenancy`.
 
 ---
 
@@ -315,8 +315,8 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 The full list with explanations is "Needs owner" in `docs/PROGRESS.md`; the per-phase test
 scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
 
-- **Let sessions push the phase branch** (add the sentence in §0 to your prompt), or fast-forward
-  `phase/01-data-auth-tenancy` to `claude/modest-einstein-d0pg1n` yourself.
+- **Let sessions push the phase branch:** keep the sentence in §0 in your prompt (the prompts in
+  `docs/sessions/` already include it).
 - Repository visibility (public vs private), the licence text, branch protection on `master`,
   GHCR package visibility, the Renovate app.
 - Sentry projects, a native-speaker review of the Arabic copy, Node 26 timing, and the shadcn
@@ -350,9 +350,11 @@ Newest first. Each session adds one entry: date, task, branch and head, result, 
 - **Carried P0 item done:** the stack E2E now invites a staff member through the API and waits for
   the worker's email (API queue → worker → Mailpit).
 - **Size:** dropping valibot's TypeScript peer took the API production install from 216 to 193 MB.
-- **CI:** [CI 61](https://github.com/assemabdelmalak/demo/actions/runs/45254004247),
-  [Docker 33](https://github.com/assemabdelmalak/demo/actions/runs/45254004192) on `f6f461e`;
-  see PROGRESS for the result.
+- **CI:** green on the head `e71f970`:
+  [CI 62](https://github.com/assemabdelmalak/demo/actions/runs/45254520210) (including
+  `test-int` on PostgreSQL 17 and the e2e smoke with the new invitation check) and
+  [Docker 34](https://github.com/assemabdelmalak/demo/actions/runs/45254520229) (all four images
+  under 250 MB). The owner approved fast-forwarding `phase/01-data-auth-tenancy` to this work.
 - **Session:** https://claude.ai/code/session_01YNpMiwMnbJVXxZqadyT8vo
 
 ### 2026-11-16 — handoff written; P1-T06 started (partial) · branch `phase/01-data-auth-tenancy`
