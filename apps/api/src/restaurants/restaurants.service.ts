@@ -12,7 +12,7 @@ import {
   restaurantSchema,
 } from '@radd/shared';
 
-import { recordAuditLater } from '../audit/audit.seam';
+import { AuditService } from '../audit/audit.service';
 
 export function toRestaurantView(row: RestaurantRow): RestaurantView {
   return restaurantSchema.parse({ ...row, createdAt: row.createdAt.toISOString() });
@@ -24,7 +24,10 @@ export function toRestaurantView(row: RestaurantRow): RestaurantView {
  */
 @Injectable()
 export class RestaurantsService {
-  constructor(private readonly restaurants: RestaurantsRepository) {}
+  constructor(
+    private readonly restaurants: RestaurantsRepository,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(actor: MemberActor, input: CreateRestaurantInput): Promise<RestaurantView> {
     assertCan(actor, 'restaurant.create');
@@ -32,13 +35,10 @@ export class RestaurantsService {
     // Slugs are global; whose restaurant holds it is not ours to say.
     if (!row) throw new DomainError('CONFLICT', { detail: 'This slug is already taken' });
     const view = toRestaurantView(row);
-    recordAuditLater({
-      action: 'restaurant.create',
-      entityType: 'restaurant',
-      entityId: row.id,
-      organizationId: row.organizationId,
-      after: view,
-    });
+    await this.audit.record(
+      { action: 'restaurant.create', entityType: 'restaurant', entityId: row.id, after: view },
+      { restaurantId: row.id },
+    );
     return view;
   }
 

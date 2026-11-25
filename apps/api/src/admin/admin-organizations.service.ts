@@ -19,7 +19,7 @@ import {
 } from '@radd/shared';
 
 import { ADMIN_DB } from './admin-db';
-import { recordAuditLater } from '../audit/audit.seam';
+import { AuditService } from '../audit/audit.service';
 
 export function toAdminOrganizationView(row: AdminOrganizationRow): AdminOrganizationView {
   return adminOrganizationSchema.parse({ ...row, createdAt: row.createdAt.toISOString() });
@@ -35,7 +35,10 @@ const organizationNotFound = () =>
  */
 @Injectable()
 export class AdminOrganizationsService {
-  constructor(@Inject(ADMIN_DB) private readonly handle: DbHandle) {}
+  constructor(
+    @Inject(ADMIN_DB) private readonly handle: DbHandle,
+    private readonly audit: AuditService,
+  ) {}
 
   async list(
     _actor: SuperAdminActor,
@@ -72,11 +75,12 @@ export class AdminOrganizationsService {
       if (!after) throw organizationNotFound();
       const beforeView = toAdminOrganizationView(before);
       const afterView = toAdminOrganizationView(after);
-      recordAuditLater({
+      // In the admin transaction: the entry commits or rolls back with the change. The actor is
+      // the super admin the guard resolved (actor type `super_admin`).
+      await this.audit.recordIn(tx, organizationId, {
         action: 'admin.organization.update',
         entityType: 'organization',
         entityId: organizationId,
-        organizationId,
         before: { status: beforeView.status, plan: beforeView.plan },
         after: { status: afterView.status, plan: afterView.plan },
       });

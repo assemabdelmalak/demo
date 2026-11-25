@@ -7,6 +7,7 @@ import {
   listOrganizationMembers,
   type OrganizationRow,
   organizationSlugExists,
+  withTenant,
 } from '@radd/db';
 import {
   assertCan,
@@ -20,7 +21,7 @@ import {
 
 import { assertCanCreateOrganization, assertOrganizationWritable } from './organization.rules';
 import { slugCandidates } from './slug';
-import { recordAuditLater } from '../audit/audit.seam';
+import { AuditService } from '../audit/audit.service';
 import { authErrorCode, toDomainError } from '../auth/auth-errors';
 import { type AuthSession } from '../auth/auth-session';
 import { type Auth } from '../auth/auth.config';
@@ -41,6 +42,7 @@ export class OrganizationsService {
   constructor(
     @Inject(DB) private readonly handle: DbHandle,
     @Inject(AUTH) private readonly auth: Auth,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -75,13 +77,16 @@ export class OrganizationsService {
       const row = await findOrganization(this.handle.db, createdId);
       if (!row) throw new Error('organisation vanished right after it was created');
       const view = toOrganizationView(row);
-      recordAuditLater({
-        action: 'organization.create',
-        entityType: 'organization',
-        entityId: row.id,
-        organizationId: row.id,
-        after: view,
-      });
+      // Onboarding has no tenant transaction (the organisation did not exist), and Better Auth
+      // has already committed it; the entry gets a short transaction of the new tenant's own.
+      await withTenant(this.handle.db, row.id, () =>
+        this.audit.record({
+          action: 'organization.create',
+          entityType: 'organization',
+          entityId: row.id,
+          after: view,
+        }),
+      );
       return view;
     }
     throw new DomainError('CONFLICT', { detail: 'Could not find a free organisation slug' });
@@ -109,11 +114,10 @@ export class OrganizationsService {
     const row = await findOrganization(this.handle.db, organization.id);
     if (!row) throw new DomainError('NOT_FOUND');
     const view = toOrganizationView(row);
-    recordAuditLater({
+    await this.audit.record({
       action: 'organization.update',
       entityType: 'organization',
       entityId: row.id,
-      organizationId: row.id,
       before: toOrganizationView(organization),
       after: view,
     });

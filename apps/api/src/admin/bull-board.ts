@@ -6,7 +6,7 @@ import { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fa
 
 import { DomainError } from '@radd/shared';
 
-import { recordAuditLater } from '../audit/audit.seam';
+import { type AuditService } from '../audit/audit.service';
 import { superAdminVerdict } from '../authz/super-admin';
 import { toProblem } from '../common/problem';
 import { sendProblem } from '../common/problem.filter';
@@ -23,6 +23,9 @@ export interface BullBoardDeps {
   /** The API's own origin: Bull Board's UI calls its API from here and nowhere else. */
   apiOrigin: string;
   typeBase: string;
+  audit: Pick<AuditService, 'recordPlatform'>;
+  /** Where a failed audit write is reported; the queue change itself has already happened. */
+  onAuditError: (error: unknown) => void;
 }
 
 /**
@@ -51,11 +54,12 @@ export function bullBoardRefusal(
  * Mounts Bull Board at `/v1/admin/queues` as a raw Fastify plugin (it renders its own UI), behind
  * the super-admin check. Must be registered after the auth bridge, whose root `onRequest` hook
  * resolves `request.authSession` before this plugin's own hook runs. Every successful change
- * (retry, clean, pause, …) goes through the audit seam as a platform action with no organisation.
+ * (retry, clean, pause, …) is audited as a platform action with no organisation, by the super
+ * admin. These routes are raw Fastify, outside Nest's request context, so the origin is passed.
  */
 export async function registerBullBoard(
   fastify: FastifyInstance,
-  { queues, allowlist, apiOrigin, typeBase }: BullBoardDeps,
+  { queues, allowlist, apiOrigin, typeBase, audit, onAuditError }: BullBoardDeps,
 ): Promise<void> {
   const serverAdapter = new BullBoardFastifyAdapter();
   serverAdapter.setBasePath(BULL_BOARD_PATH);
@@ -76,18 +80,24 @@ export async function registerBullBoard(
       scope.addHook('onResponse', async (request: FastifyRequest, reply: FastifyReply) => {
         const session = request.authSession;
         if (SAFE_METHODS.has(request.method) || reply.statusCode >= 400 || !session) return;
-        recordAuditLater({
-          action: `admin.queues.${request.method.toLowerCase()}`,
-          entityType: 'queue',
-          // The board's API path names the queue and job, e.g. /api/queues/notify.email/retry/failed.
-          entityId: new URL(request.url, 'http://bull-board.invalid').pathname,
-          organizationId: null,
-          outsideNest: {
-            actor: { kind: 'super_admin', userId: session.userId },
-            requestId: request.id,
-          },
-        });
-        await Promise.resolve();
+        // Queue changes live in Valkey, not Postgres, so there is no transaction to share: the
+        // entry follows the change. A failed write is reported, never thrown at a sent response.
+        await audit
+          .recordPlatform(
+            {
+              action: `admin.queues.${request.method.toLowerCase()}`,
+              entityType: 'queue',
+              // The board's API path names the queue and job, e.g. /api/queues/notify.email/retry/failed.
+              entityId: new URL(request.url, 'http://bull-board.invalid').pathname,
+            },
+            {
+              actor: { type: 'super_admin', id: session.userId },
+              requestId: request.id,
+              clientIp: request.clientIp ?? null,
+              restaurantId: null,
+            },
+          )
+          .catch(onAuditError);
       });
       await scope.register(serverAdapter.registerPlugin());
     },

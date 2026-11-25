@@ -4,7 +4,7 @@ import { currentTenantScope, findMemberForPin, setMemberPinHash } from '@radd/db
 import { assertCan, DomainError, type MemberActor } from '@radd/shared';
 
 import { PinHasher } from './pin-hasher';
-import { recordAuditLater } from '../audit/audit.seam';
+import { AuditService } from '../audit/audit.service';
 
 const memberNotFound = () => new DomainError('NOT_FOUND', { detail: 'Member not found' });
 
@@ -15,7 +15,10 @@ const memberNotFound = () => new DomainError('NOT_FOUND', { detail: 'Member not 
  */
 @Injectable()
 export class MemberPinService {
-  constructor(@Inject(PinHasher) private readonly hasher: PinHasher) {}
+  constructor(
+    @Inject(PinHasher) private readonly hasher: PinHasher,
+    private readonly audit: AuditService,
+  ) {}
 
   async set(actor: MemberActor, memberId: string, pin: string): Promise<void> {
     const target = await this.target(actor, memberId);
@@ -24,11 +27,10 @@ export class MemberPinService {
       throw memberNotFound();
     }
     // Never the PIN or its hash: only that it changed.
-    recordAuditLater({
+    await this.audit.record({
       action: 'member.pin.set',
       entityType: 'member',
       entityId: target.id,
-      organizationId: actor.organizationId,
       before: { hasPin: target.pinHash !== null, pinDisabled: target.pinDisabledAt !== null },
       after: { hasPin: true, pinDisabled: false },
     });
@@ -39,11 +41,10 @@ export class MemberPinService {
     if (!(await setMemberPinHash(this.tx(), actor.organizationId, target.id, null))) {
       throw memberNotFound();
     }
-    recordAuditLater({
+    await this.audit.record({
       action: 'member.pin.remove',
       entityType: 'member',
       entityId: target.id,
-      organizationId: actor.organizationId,
       before: { hasPin: target.pinHash !== null, pinDisabled: target.pinDisabledAt !== null },
       after: { hasPin: false, pinDisabled: false },
     });

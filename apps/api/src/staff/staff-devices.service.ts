@@ -18,7 +18,7 @@ import {
 } from '@radd/shared';
 
 import { hashDeviceToken, newDeviceToken } from './device-cookie';
-import { recordAuditLater } from '../audit/audit.seam';
+import { AuditService } from '../audit/audit.service';
 
 export function toStaffDeviceView(row: StaffDeviceRow): StaffDeviceView {
   return staffDeviceSchema.parse({
@@ -39,7 +39,10 @@ const deviceNotFound = () => new DomainError('NOT_FOUND', { detail: 'Device not 
  */
 @Injectable()
 export class StaffDevicesService {
-  constructor(private readonly devices: StaffDevicesRepository) {}
+  constructor(
+    private readonly devices: StaffDevicesRepository,
+    private readonly audit: AuditService,
+  ) {}
 
   /**
    * Registers a device and returns its token for the caller to put in the cookie. The token is
@@ -59,13 +62,15 @@ export class StaffDevicesService {
       registeredByUserId: actor.userId,
     });
     const device = toStaffDeviceView(row);
-    recordAuditLater({
-      action: 'staff_device.register',
-      entityType: 'staff_device',
-      entityId: row.id,
-      organizationId: row.organizationId,
-      after: device,
-    });
+    await this.audit.record(
+      {
+        action: 'staff_device.register',
+        entityType: 'staff_device',
+        entityId: row.id,
+        after: device,
+      },
+      { restaurantId },
+    );
     return { device, token };
   }
 
@@ -90,14 +95,16 @@ export class StaffDevicesService {
     const endedSessions = await deleteStaffDeviceSessions(scope.tx, deviceId);
     const before = toStaffDeviceView(result.before);
     const after = toStaffDeviceView(result.after);
-    recordAuditLater({
-      action: 'staff_device.revoke',
-      entityType: 'staff_device',
-      entityId: deviceId,
-      organizationId: result.after.organizationId,
-      before,
-      after: { ...after, endedSessions },
-    });
+    await this.audit.record(
+      {
+        action: 'staff_device.revoke',
+        entityType: 'staff_device',
+        entityId: deviceId,
+        before,
+        after: { ...after, endedSessions },
+      },
+      { restaurantId: result.after.restaurantId },
+    );
     return after;
   }
 }

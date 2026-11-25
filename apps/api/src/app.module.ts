@@ -16,6 +16,7 @@ import { type Mailer } from '@radd/mail';
 import { DomainError } from '@radd/shared';
 
 import { AdminModule } from './admin/admin.module';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule, type AuthModuleOptions } from './auth/auth.module';
 import { AuthzModule } from './authz/authz.module';
 import { zodFieldErrors } from './common/problem';
@@ -106,6 +107,7 @@ export class AppModule {
         // After the throttler and idempotency modules: global enhancers run in registration order
         // (see AuthzModule).
         AuthzModule,
+        AuditModule,
         AuthModule.register(options.auth),
         OrganizationsModule,
         RestaurantsModule,

@@ -30,7 +30,7 @@ import {
   pinGeneration,
   retryAfterSeconds,
 } from './pin-lockout';
-import { recordAuditLater } from '../audit/audit.seam';
+import { AuditService } from '../audit/audit.service';
 import { type Auth } from '../auth/auth.config';
 import { AUTH } from '../auth/auth.module';
 import { CLIENT_IP_HEADER, toAuthClientIp } from '../auth/auth.utils';
@@ -72,6 +72,7 @@ export class PinSwitchService {
     @Inject(PinHasher) private readonly hasher: PinHasher,
     @Inject(PinLockout) private readonly lockout: PinLockout,
     private readonly devices: StaffDevicesRepository,
+    private readonly audit: AuditService,
   ) {}
 
   async switch(
@@ -184,13 +185,18 @@ export class PinSwitchService {
       headers: this.authHeaders(request),
       returnHeaders: true,
     });
-    await withTenant(this.handle.db, device.organizationId, () => this.devices.touch(device.id));
-    recordAuditLater({
-      action: 'staff.pin_switch',
-      entityType: 'member',
-      entityId: member.id,
-      organizationId: device.organizationId,
-      after: { staffDeviceId: device.id, sessionId: response.sessionId },
+    // The route is public: the PIN proved who acts, so the actor is that member's user.
+    await withTenant(this.handle.db, device.organizationId, async () => {
+      await this.devices.touch(device.id);
+      await this.audit.record(
+        {
+          action: 'staff.pin_switch',
+          entityType: 'member',
+          entityId: member.id,
+          after: { staffDeviceId: device.id, sessionId: response.sessionId },
+        },
+        { actor: { type: 'user', id: member.userId }, restaurantId: device.restaurantId },
+      );
     });
     return {
       result: {

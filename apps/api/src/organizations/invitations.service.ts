@@ -12,7 +12,7 @@ import {
 
 import { assertOrganizationWritable } from './organization.rules';
 import { OrganizationsService } from './organizations.service';
-import { recordAuditLater } from '../audit/audit.seam';
+import { AuditService } from '../audit/audit.service';
 import { toDomainError } from '../auth/auth-errors';
 import { type Auth } from '../auth/auth.config';
 import { AUTH } from '../auth/auth.module';
@@ -29,6 +29,7 @@ export class InvitationsService {
   constructor(
     private readonly organizations: OrganizationsService,
     @Inject(AUTH) private readonly auth: Auth,
+    private readonly audit: AuditService,
   ) {}
 
   async create(
@@ -64,11 +65,11 @@ export class InvitationsService {
       expiresAt: new Date(invitation.expiresAt).toISOString(),
       createdAt: new Date(invitation.createdAt).toISOString(),
     });
-    recordAuditLater({
+    // The address is not stored in the entry: the invitation row holds it.
+    await this.audit.record({
       action: 'invitation.create',
       entityType: 'invitation',
       entityId: view.id,
-      organizationId: view.organizationId,
       after: { role: view.role, expiresAt: view.expiresAt },
     });
     return view;

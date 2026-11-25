@@ -10,6 +10,7 @@ import { QUEUE_NAMES } from '@radd/shared';
 
 import { registerBullBoard } from './admin/bull-board';
 import { type AppModuleOptions, AppModule } from './app.module';
+import { AuditService } from './audit/audit.service';
 import { type AuthRateLimitStorage } from './auth/auth-rate-limit';
 import { type Auth } from './auth/auth.config';
 import { registerAuth } from './auth/auth.fastify';
@@ -77,11 +78,16 @@ export async function createApp(
 
   // After the auth bridge: its root hook resolves the session this plugin's guard reads (ADR-027).
   const queues = app.get(QueueProducer);
+  const bullBoardLogger = new NestLogger('BullBoard');
   await registerBullBoard(fastify, {
     queues: QUEUE_NAMES.map((name) => queues.queue(name)),
     allowlist: env.SUPER_ADMIN_EMAILS,
     apiOrigin: authUrlParts(env.BETTER_AUTH_URL).origin,
     typeBase,
+    audit: app.get(AuditService),
+    onAuditError: (error) => {
+      bullBoardLogger.error({ err: error }, 'Bull Board change not audited');
+    },
   });
 
   app.enableCors({
