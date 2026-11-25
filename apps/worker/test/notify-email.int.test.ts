@@ -71,9 +71,12 @@ describe.skipIf(!runtime.ready)('notify.email: API producer → worker → maile
     });
     await events.waitUntilReady();
     const env = testEnv({ REDIS_URL: valkey.url, WORKER_HEALTH_PORT: String(await freePort()) });
-    worker = await NestFactory.createApplicationContext(WorkerModule.register(env, { mailer }), {
-      logger: false,
-    });
+    worker = await NestFactory.createApplicationContext(
+      WorkerModule.register(env, { mailer, outbox: false }),
+      {
+        logger: false,
+      },
+    );
     await worker.init();
   });
 

@@ -22,7 +22,8 @@ async function startWorker(redisUrl: string): Promise<INestApplicationContext> {
   const env = testEnv({ REDIS_URL: redisUrl, WORKER_HEALTH_PORT: String(await freePort()) });
   // A memory mailer: locally Valkey is shared, so this worker may also pick up queued emails.
   const app = await NestFactory.createApplicationContext(
-    WorkerModule.register(env, { mailer: new MemoryMailer() }),
+    // No database here: the outbox dispatcher is covered by outbox-dispatch.int.test.ts.
+    WorkerModule.register(env, { mailer: new MemoryMailer(), outbox: false }),
     {
       logger: false,
     },
