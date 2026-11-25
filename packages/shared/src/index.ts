@@ -6,3 +6,4 @@ export * from './localized-text.js';
 export * from './enums.js';
 export * from './dto/index.js';
 export * from './permissions.js';
+export * from './realtime.js';

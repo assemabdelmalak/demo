@@ -34,6 +34,11 @@
       "@radd/source": "./src/permissions.ts",
       "types": "./dist/permissions.d.ts",
       "default": "./dist/permissions.js"
+    },
+    "./realtime-publisher": {
+      "@radd/source": "./src/realtime-publisher.ts",
+      "types": "./dist/realtime-publisher.d.ts",
+      "default": "./dist/realtime-publisher.js"
     }
   },
   "files": [
@@ -50,11 +55,13 @@
     "@radd/config": "workspace:*",
     "@types/node": "24.19.2",
     "eslint": "10.13.0",
+    "notepack.io": "3.0.1",
     "typescript": "5.9.3",
     "vite": "8.3.4",
     "vitest": "5.0.5"
   },
   "dependencies": {
+    "@socket.io/redis-emitter": "5.1.0",
     "uuid": "14.0.3",
     "zod": "4.6.7"
   }
