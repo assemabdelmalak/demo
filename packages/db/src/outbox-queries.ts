@@ -10,7 +10,7 @@ import { BaseTenantRepository } from './tenant.js';
 // definer functions, which only `app_worker` may call. IDs cross this boundary as strings: they
 // are bigints in the database and must survive JSON.
 
-export interface OutboxEventInput {
+export interface NewOutboxEvent {
   aggregateType: string;
   aggregateId: string;
   type: string;
@@ -42,7 +42,7 @@ const columns = {
 
 /** The current tenant's outbox. RLS confines both methods to that organisation. */
 export class OutboxRepository extends BaseTenantRepository {
-  async add(event: OutboxEventInput): Promise<OutboxEventRow> {
+  async add(event: NewOutboxEvent): Promise<OutboxEventRow> {
     const [row] = await this.tx
       .insert(outboxEvents)
       .values({
