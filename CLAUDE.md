@@ -133,6 +133,7 @@ radd-menu/
 │  ├─ ai/           LLM client, prompts, tools, safety guards, evals
 │  ├─ ui/           shared React components + design tokens
 │  ├─ api-client/   generated OpenAPI types, typed fetch client, socket event types
+│  ├─ mail/         Mailer interface, SMTP adapter, plain auth email templates (ADR-029)
 │  └─ config/       tsconfig, eslint, prettier, env schemas
 ├─ infra/           docker-compose.dev.yml, Dockerfiles, k6 scripts, ops scripts
 ├─ docs/

@@ -67,6 +67,8 @@
 See `.env.example`. Set them per environment in Coolify. Secrets are never stored in Git.
 
 - Staging and production must set `CLIENT_IP_HEADER=cf-connecting-ip` on the API. Without it every diner appears to come from the proxy's address and shares one rate-limit bucket (ADR-016).
+- **Auth (ADR-023, ADR-026, ADR-027).** `BETTER_AUTH_URL` is the API's public `https://api.<domain>/v1/auth`; over HTTPS every auth cookie is Secure and the shared-tablet cookie is `__Host-radd_device`. `AUTH_COOKIE_DOMAIN` is the parent domain (`<domain>`), so the console on `app.` and the API share the session. The cookie prefix comes from `APP_ENV` (`radd` in production, `radd-staging` on staging), so a staging deploy never accepts a production session, even under the same parent domain. `TRUSTED_ORIGINS` lists the console and diner origins of that environment only. `SUPER_ADMIN_EMAILS` is the allowlist for `/v1/admin/*`; each listed account must also turn on two-factor.
+- **Rotating `BETTER_AUTH_SECRET`** signs everyone out, makes every staff PIN fail (the PIN pepper derives from it) and invalidates two-factor secrets. Plan it: staff PINs must be set again, and on a seeded environment run `pnpm db:seed` again (ADR-033).
 - Every `*_SECRET` must be a random value of at least 32 characters (`openssl rand -base64 48`); the apps refuse to start in staging or production with the `change-me` placeholders. `TRACE_SAMPLING_SECRET` must be the same value in the API, diner and console of one environment, so they agree on which requests are traced (ADR-019).
 
 ## 5. CI/CD (GitHub Actions)

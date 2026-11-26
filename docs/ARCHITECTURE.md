@@ -124,12 +124,17 @@ Route groups:
 - `(kitchen)` — KDS
 - `(admin)` — super admin
 
-Layouts are role-gated and work on phone and tablet. Built with shadcn/ui.
+Layouts are role-gated and work on phone and tablet. Built with shadcn/ui (hand-adapted for now, ADR-020).
+
+As built in Phase 1 (ADR-030): `(auth)` holds sign-up, email verification, sign-in (password or code, then two-factor), password reset, two-factor settings, invitation acceptance and onboarding step 0. `(owner)` serves owners and managers. The console's server checks the role on every shell and sends a member to their own shell; super admins see `(admin)`. Shared tablets switch staff by PIN through the API (ADR-026); their screens arrive in P2-T11.
 
 ### apps/api (NestJS + Fastify)
 
 - REST `/v1/*`. OpenAPI at `/v1/docs` in non-production environments.
-- Better Auth handler mounted at `/v1/auth/*`.
+- Better Auth handler mounted at `/v1/auth/*` as a raw Fastify route; its responses keep Better Auth's JSON shape (ADR-023). The same bridge resolves the session cookie for every other route and confines shared-tablet PIN sessions (ADR-026).
+- Access control (ADR-024): every route declares a policy (`@Public`, `@AuthenticatedOnly`, `@RequirePermission(action)`, `@RequireSuperAdmin`); one global guard refuses undeclared routes, resolves the organisation (from `:rid` or the active one) and checks the role against `packages/shared/src/permissions.ts` (ADR-025). Tenant-scoped handlers run in one `withTenant` transaction shared by repositories, `AuditService` (ADR-031) and `OutboxService` (ADR-028).
+- `/v1/admin/*` and Bull Board at `/v1/admin/queues` for super admins (ADR-027), on a separate `app_admin` pool.
+- Email through `packages/mail` (`Mailer`, SMTP to Mailpit locally): auth codes are sent by the API directly, invitations through the `notify.email` queue (ADR-029).
 - Socket.IO namespaces:
   - `/diner` — participant token auth
   - `/staff` — console session auth plus restaurant membership

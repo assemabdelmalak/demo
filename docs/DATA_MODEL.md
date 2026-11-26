@@ -79,8 +79,11 @@ Better Auth generates `user`, `session`, `account`, `verification`, `organizatio
 - `terms_accepted_at timestamptz`
 
 **`member` additional fields:**
-- `pin_hash text null` (argon2id). Used for staff quick-switch on shared devices.
+- `pin_hash text null` (argon2id with a server-side pepper). Used for staff quick-switch on shared devices (ADR-026).
+- `pin_disabled_at timestamptz null`: set after 15 failed PINs in a day; the PIN stays unusable until a manager sets a new one, which clears it.
 - `display_name text null`
+
+`pin_hash` and `pin_disabled_at` are columns of the table but are **not declared to Better Auth** (only `display_name` is), so none of Better Auth's member reads can return them; only our own queries in `packages/db` read or write them (security review of Phase 1, F2).
 
 `member.role` uses the `member_role` values.
 
