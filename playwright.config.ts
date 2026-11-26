@@ -64,9 +64,9 @@ export default defineConfig({
       },
     },
     {
-      // The sign-up and sign-in journeys again in Arabic (TESTING: every screen in ar and en).
+      // The account journeys and the seeded roles again in Arabic (TESTING: every screen in ar and en).
       name: 'tablet-console-ar',
-      testMatch: /console\.auth\.spec\.ts/,
+      testMatch: /console\.(auth|roles)\.spec\.ts/,
       use: {
         viewport: { width: 1024, height: 768 },
         baseURL: CONSOLE_URL,
