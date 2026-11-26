@@ -75,10 +75,10 @@ The owner approved the plan in `docs/plans/phase-01-plan.md` on 2026-11-11; its 
 | P1-T07 Audit and outbox | ✅ CI green ([CI 68](https://github.com/assemabdelmalak/demo/actions/runs/45630173651), [Docker 38](https://github.com/assemabdelmalak/demo/actions/runs/45630173552)) | Done 2026-11-25, see §12 |
 | P1-T08 Seed Beit Tayta | ✅ CI green ([CI 72](https://github.com/assemabdelmalak/demo/actions/runs/45739297307), [Docker 42](https://github.com/assemabdelmalak/demo/actions/runs/45739297263)) | Done 2026-11-26, see §12; ADR-033 |
 | Security review of Phase 1 | ✅ CI green ([CI 78](https://github.com/assemabdelmalak/demo/actions/runs/45838997014), [Docker 47](https://github.com/assemabdelmalak/demo/actions/runs/45838996851)) | Done 2026-11-26, see §12; report `docs/SECURITY_REVIEW_P1.md` |
-| Docs pass, Phase 1 PR, demo checkpoint | ✅ CI green ([CI 86](https://github.com/assemabdelmalak/demo/actions/runs/45855051505), [Docker 55](https://github.com/assemabdelmalak/demo/actions/runs/45855051560)) | Done 2026-11-26, see §12; [PR #2](https://github.com/assemabdelmalak/demo/pull/2) waits for the owner |
+| Docs pass, Phase 1 PR, demo checkpoint | ✅ CI green ([CI 97](https://github.com/assemabdelmalak/demo/actions/runs/45857596317), [Docker 66](https://github.com/assemabdelmalak/demo/actions/runs/45857596246), [CodeQL 24](https://github.com/assemabdelmalak/demo/actions/runs/45857606988)) | Done 2026-11-26, see §12; [PR #2](https://github.com/assemabdelmalak/demo/pull/2) waits for the owner |
 
 **Last verified numbers (2026-11-26, Phase 1 docs pass, head of the phase branch):** lint,
-typecheck, format and build pass. Unit tests: 848 (shared 524, api 107, config 62, console 50,
+typecheck, format and build pass. Unit tests: 851 (shared 524, api 110, config 62, console 50,
 ui 46, db 32, mail 10, worker 9, diner 6, api-client 2). Integration: api 124, db 52, worker 14,
 config 2 of 4 (the other 2 assert PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16
 by design; green in CI). Playwright: 57 passed (en + ar, full stack, seeded twice). The seed's
@@ -244,6 +244,9 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
   created, 0 updated" (CI checks it). A new tenant table the demo needs gets its rows in
   `rows.ts`, written through `upsertRows` inside the seed's `withTenant`. P2-T08 must make the
   seed publish and set the restaurant live; P2-T02 must add the photos.
+- **CodeQL** runs only on pull requests, `master` and nightly, so a phase branch is first scanned
+  when its PR opens. Sessions cannot read code-scanning alerts through the API: open the CodeQL
+  run's `analyze` job log, step "List results in the log", for rule, file, line and message.
 - **Per-address sign-in limits** (ADR-034): 10 wrong passwords in a row for one address pause its
   password sign-in for 15 minutes, and one address gets at most 5 code emails an hour. A test that
   fails a password more than 9 times for one address, or asks one address for more than 5 codes,
@@ -403,13 +406,24 @@ Newest first. Each session adds one entry: date, task, branch and head, result, 
 - **Audit:** all 77 "Do", "Accept" and "Test" bullets of P1-T01 to T08 checked against the code:
   all met; 5 met differently with a recorded decision (ADR-021, 023, 024, 026, 028); 2 deferred
   with a reason (seed publish → P2-T08, photos → P2-T02, ADR-033). Nothing needed fixing.
+- **Found on the way:** CodeQL scanned Phase 1 code for the first time when PR #2 opened and
+  raised 2 high alerts, both in `apps/api/src/organizations/slug.ts`: a hyphen-trimming regex
+  that backtracks on long runs (not reachable in practice, runs were collapsed first) and
+  `byte % 36` for the random suffix (slightly biased; the suffix is not a secret). Fixed by
+  splitting the name into words and using `crypto.randomInt` (`c06ea3b`). The CodeQL workflow now
+  prints every result in its log (`a378587`), since sessions cannot read alerts any other way.
 - **Commits:** `b334467` (ADRs), `ed8142d` (API.md), `22c55fc` (other specs), `a21ce93` (demo
-  screens), `020eee1` (Phase 2 session prompt) plus the docs commit.
-- **Tests:** no code changed. All gates, integration (190 green, 2 expected local failures) and
-  the full Playwright suite (57) pass locally; seeding twice wrote 0 rows the second time.
-- **CI:** green on `22c55fc`: [CI 86](https://github.com/assemabdelmalak/demo/actions/runs/45855051505)
-  and [Docker 55](https://github.com/assemabdelmalak/demo/actions/runs/45855051560) (four images
-  under 250 MB, non-root, healthy). The phase branch was fast-forwarded to this work.
+  screens), `020eee1` (Phase 2 session prompt), `78f689e` (HANDOFF and PROGRESS), `a378587`
+  (CodeQL log step), `c06ea3b` (slug fix) plus the final docs commit.
+- **Tests:** API unit 107 → 110 (slug edge cases, a hostile 150 000-character name, all 36
+  suffix symbols reachable; they guard behaviour and pass on the old code too, since the alerts
+  were about the patterns). All gates, integration (190 green, 2 expected local failures) and the
+  full Playwright suite (57) pass locally; seeding twice wrote 0 rows the second time.
+- **CI:** green on the code head `c06ea3b`: [CI 97](https://github.com/assemabdelmalak/demo/actions/runs/45857596317) (push) and
+  [CI 98](https://github.com/assemabdelmalak/demo/actions/runs/45857607038) (pull request), all
+  jobs including `test-int` on PostgreSQL 17 and `e2e-smoke`; [Docker 66](https://github.com/assemabdelmalak/demo/actions/runs/45857596246) (four images under 250 MB,
+  non-root, healthy); [CodeQL 24](https://github.com/assemabdelmalak/demo/actions/runs/45857606988) with its results check green (it was red with the 2 alerts on
+  `78f689e`). The phase branch was fast-forwarded to this work.
 - **Session:** https://claude.ai/code/session_01YNpMitNWR3sRGk8wJDXNmF
 
 ### 2026-11-26 — Per-address sign-in limits (review M1, M2) · branch `ccr-5ac9a7bd-5ahjj9`
