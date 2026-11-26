@@ -152,7 +152,13 @@ export const apiEnvSchema = z
 export const workerEnvSchema = z.object({
   ...common,
   ...publicUrls,
-  ...database,
+  /**
+   * The worker connects as `app_worker` (ADR-021), the only role that may claim outbox events
+   * across organisations (ADR-028). Its own variable, not `DATABASE_URL`: locally one `.env`
+   * serves every app, and the worker must never hold the API's credential, nor the API its.
+   */
+  DATABASE_URL_WORKER: url,
+  DATABASE_POOL_MAX: database.DATABASE_POOL_MAX,
   ...valkey,
   ...storage,
   ...ai,
@@ -201,11 +207,36 @@ export const consoleEnvSchema = z
   })
   .superRefine(refineSecrets(['TRACE_SAMPLING_SECRET']));
 
+/**
+ * The one-off migration process (`node dist/migrate.js`). It alone holds the schema owner's
+ * credential; the API and worker connect with roles that cannot change the schema.
+ */
+export const migrateEnvSchema = z.object({
+  DATABASE_URL_MIGRATOR: url,
+});
+
+/**
+ * `pnpm db:seed` (the demo restaurant, SEED_DATA). It writes tenant rows as the API's role, the
+ * subscription as the admin role, and needs the API's `BETTER_AUTH_SECRET`: PIN hashes and the
+ * super admin's TOTP secret only verify under the secret the API runs with.
+ */
+export const seedEnvSchema = z
+  .object({
+    APP_ENV: common.APP_ENV,
+    DATABASE_URL: url,
+    DATABASE_URL_ADMIN: url,
+    BETTER_AUTH_SECRET: requiredString,
+    SUPER_ADMIN_EMAILS: csv(z.email()),
+  })
+  .superRefine(refineSecrets(['BETTER_AUTH_SECRET']));
+
 export const envSchemas = {
   api: apiEnvSchema,
   worker: workerEnvSchema,
   diner: dinerEnvSchema,
   console: consoleEnvSchema,
+  migrate: migrateEnvSchema,
+  seed: seedEnvSchema,
 } as const;
 
 export const publicEnvSchemas = {

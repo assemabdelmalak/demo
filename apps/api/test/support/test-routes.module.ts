@@ -6,9 +6,14 @@ import { type FastifyReply } from 'fastify';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-import { DomainError, uuidv7 } from '@radd/shared';
+import { currentTenantScope, RestaurantsRepository } from '@radd/db';
+import { DomainError, type MemberActor, realtimeRooms, uuidv7 } from '@radd/shared';
 
+import { AuditService } from '../../src/audit/audit.service';
+import { CurrentActor, Public, RequirePermission } from '../../src/authz/access.decorators';
+import { RequestContext } from '../../src/authz/request-context';
 import { Idempotent } from '../../src/idempotency/idempotent.decorator';
+import { OutboxService } from '../../src/outbox/outbox.service';
 
 class ItemParams extends createZodDto(z.object({ id: z.string().min(1).max(100) })) {}
 
@@ -28,6 +33,7 @@ export const calls = {
 };
 
 /** Routes that exist only in tests; never registered by `main.ts`. */
+@Public()
 @Controller('__test')
 class TestController {
   @Get('domain-error')
@@ -126,5 +132,136 @@ class TestController {
   }
 }
 
-@Module({ controllers: [TestController] })
+class SlugBody extends createZodDto(z.object({ slug: z.string().min(3).max(48) })) {}
+class RestaurantParam extends createZodDto(z.object({ rid: z.uuid() })) {}
+class OutboxBody extends createZodDto(
+  z.object({ count: z.number().int().min(1).max(5), fail: z.boolean().default(false) }),
+) {}
+
+/** Declares no access policy: the default-deny guard must refuse every route here. */
+@Controller('__test/undeclared')
+class UndeclaredController {
+  @Get()
+  open() {
+    return { leaked: true };
+  }
+
+  /** Refused requests must still count against rate limits. */
+  @Get('limited')
+  @Throttle({ default: { limit: 3, ttl: 2_000 } })
+  limited() {
+    return { leaked: true };
+  }
+}
+
+/** Tenant-scoped routes that expose the plumbing: the context and the transaction. */
+@Controller('__test/tenant')
+class TenantTestController {
+  constructor(
+    private readonly context: RequestContext,
+    private readonly restaurants: RestaurantsRepository,
+    private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
+  ) {}
+
+  /** Writes a restaurant in the request transaction, then fails: the write must roll back. */
+  @Post('write-then-throw')
+  @RequirePermission('restaurant.create')
+  async writeThenThrow(@Body() body: SlugBody): Promise<never> {
+    const row = await this.restaurants.create({ name: { en: 'Rolled back' }, slug: body.slug });
+    throw new DomainError('CONFLICT', { detail: `wrote ${row?.id ?? 'nothing'}, then failed` });
+  }
+
+  /** Writes a restaurant and its audit entry, then fails: both must roll back together. */
+  @Post('audit-then-throw')
+  @RequirePermission('restaurant.create')
+  async auditThenThrow(@Body() body: SlugBody): Promise<never> {
+    const row = await this.restaurants.create({ name: { en: 'Rolled back' }, slug: body.slug });
+    await this.audit.record({
+      action: 'test.rolled_back',
+      entityType: 'restaurant',
+      entityId: row?.id ?? body.slug,
+      after: { slug: body.slug },
+    });
+    throw new DomainError('CONFLICT', { detail: 'audited, then failed' });
+  }
+
+  /** Audits a state full of values that must never be stored (SECURITY §2 "Never log"). */
+  @Post('audit-sensitive')
+  @RequirePermission('restaurant.create')
+  async auditSensitive(): Promise<{ id: string }> {
+    const id = uuidv7();
+    await this.audit.record({
+      action: 'test.sensitive',
+      entityType: 'payment',
+      entityId: id,
+      after: {
+        amountMinor: 1500,
+        externalReference: 'WHISH-55501234',
+        pin: 'pin-zqx-7731',
+        session: { token: 'secret-session-token' },
+        clientIp: this.context.clientIp,
+        note: this.context.clientIp,
+      },
+    });
+    return { id };
+  }
+
+  /**
+   * Adds `count` events in the request transaction (each to the organisation's imports room and a
+   * session room), then fails if asked: a rolled-back event must never be emitted.
+   */
+  @Post('outbox')
+  @RequirePermission('restaurant.create')
+  async addEvents(@Body() body: OutboxBody): Promise<{ ids: string[]; sessionId: string }> {
+    const scope = currentTenantScope();
+    if (!scope) throw new Error('no tenant transaction');
+    const sessionId = uuidv7();
+    const ids: string[] = [];
+    for (let n = 0; n < body.count; n += 1) {
+      ids.push(
+        await this.outbox.add(scope.tx, {
+          type: 'test.changed',
+          aggregate: { type: 'test', id: sessionId },
+          rooms: [
+            realtimeRooms.organizationImports(scope.organizationId),
+            realtimeRooms.session(sessionId),
+          ],
+          payload: { n },
+        }),
+      );
+    }
+    if (body.fail) throw new DomainError('CONFLICT', { detail: 'events added, then failed' });
+    return { ids, sessionId };
+  }
+
+  /** What services see through `RequestContext`. */
+  @Get('context')
+  @RequirePermission('restaurant.read')
+  current(@CurrentActor() actor: MemberActor) {
+    return {
+      actor,
+      organizationId: this.context.organizationId ?? null,
+      restaurantId: this.context.restaurantId ?? null,
+      requestId: this.context.requestId ?? null,
+      sameActor: this.context.actor.userId === actor.userId,
+    };
+  }
+
+  /** The tenant of a restaurant-scoped route is the restaurant's organisation. */
+  @Get('restaurants/:rid')
+  @RequirePermission('restaurant.read')
+  restaurant(@Param() params: RestaurantParam) {
+    return {
+      organizationId: this.context.organizationId ?? null,
+      restaurantId: this.context.restaurantId ?? null,
+      rid: params.rid,
+    };
+  }
+}
+
+@Module({
+  controllers: [TestController, UndeclaredController, TenantTestController],
+  providers: [{ provide: RestaurantsRepository, useValue: new RestaurantsRepository() }],
+})
 export class TestRoutesModule {}

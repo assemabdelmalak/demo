@@ -67,6 +67,8 @@
 See `.env.example`. Set them per environment in Coolify. Secrets are never stored in Git.
 
 - Staging and production must set `CLIENT_IP_HEADER=cf-connecting-ip` on the API. Without it every diner appears to come from the proxy's address and shares one rate-limit bucket (ADR-016).
+- **Auth (ADR-023, ADR-026, ADR-027).** `BETTER_AUTH_URL` is the API's public `https://api.<domain>/v1/auth`; over HTTPS every auth cookie is Secure and the shared-tablet cookie is `__Host-radd_device`. `AUTH_COOKIE_DOMAIN` is the parent domain (`<domain>`), so the console on `app.` and the API share the session. The cookie prefix comes from `APP_ENV` (`radd` in production, `radd-staging` on staging), so a staging deploy never accepts a production session, even under the same parent domain. `TRUSTED_ORIGINS` lists the console and diner origins of that environment only. `SUPER_ADMIN_EMAILS` is the allowlist for `/v1/admin/*`; each listed account must also turn on two-factor.
+- **Rotating `BETTER_AUTH_SECRET`** signs everyone out, makes every staff PIN fail (the PIN pepper derives from it) and invalidates two-factor secrets. Plan it: staff PINs must be set again, and on a seeded environment run `pnpm db:seed` again (ADR-033).
 - Every `*_SECRET` must be a random value of at least 32 characters (`openssl rand -base64 48`); the apps refuse to start in staging or production with the `change-me` placeholders. `TRACE_SAMPLING_SECRET` must be the same value in the API, diner and console of one environment, so they agree on which requests are traced (ADR-019).
 
 ## 5. CI/CD (GitHub Actions)
@@ -89,10 +91,16 @@ See `.env.example`. Set them per environment in Coolify. Secrets are never store
 - Write migrations with drizzle-kit (SQL committed). RLS policies and roles live in hand-written SQL migration files.
 - **Expand / contract.** Never drop or rename a column in the same release that stops using it. Do it in two releases.
 - **Destructive migrations** require a `-- DESTRUCTIVE` header and owner approval in the PR.
-- **Roles:**
-  - `app_migrator` — owner of the schema
-  - `app_runtime` — CRUD on tables, subject to RLS
+- **Roles (ADR-021):**
+  - `app_migrator` — owner of the database and schema; used only by `node dist/migrate.js`
+  - `app_runtime` — the API; table privileges granted per table, subject to RLS
+  - `app_worker` — the worker; subject to RLS; the only role that may run the outbox dispatcher functions (`claim_outbox_events`, `mark_outbox_events_dispatched`, ADR-028), and it has no privilege on `outbox_events` itself
   - `app_admin` — for the admin module; `BYPASSRLS`; used only by admin services
+- **First-time setup of a database (once per environment, as a superuser):**
+  1. Create the database.
+  2. Run `packages/db/sql/bootstrap-roles.sql` against it. It creates the four roles without passwords, makes `app_migrator` the owner and closes the database to `PUBLIC`. It is idempotent.
+  3. Set a strong password on each role (`ALTER ROLE app_runtime PASSWORD '…'`) and put the four connection strings in Coolify: `DATABASE_URL_MIGRATOR` for the migrate step; `DATABASE_URL` (`app_runtime`) and `DATABASE_URL_ADMIN` (`app_admin`) for the API; `DATABASE_URL_WORKER` (`app_worker`) for the worker. Each app reads only its own variables, so the worker never holds the API's credential and the API never holds the worker's (locally one `.env` carries all four).
+- **The migrate step refuses to run** if the roles are missing or unsafe (for example if `app_runtime` could bypass RLS), and prints what to fix.
 
 ## 7. Backups and disaster recovery
 

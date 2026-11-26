@@ -110,6 +110,16 @@ jobs:
       - name: Use the example environment
         run: cp .env.example .env
       - run: pnpm build
+      # The same entry point a deploy runs: as app_migrator, after checking the roles (ADR-021).
+      - name: Apply database migrations
+        run: node --env-file=.env apps/api/dist/migrate.js
+      # The demo restaurant (SEED_DATA): the role tests sign in as its users. Run twice: the
+      # second run must change nothing (it prints "0 rows created, 0 updated").
+      - name: Seed Beit Tayta
+        run: |
+          node --env-file=.env packages/db/dist/seed/main.js --with-session
+          node --env-file=.env packages/db/dist/seed/main.js --with-session | tee seed.log
+          grep -q ': 0 rows created, 0 updated,' seed.log
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Start the API and worker

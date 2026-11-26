@@ -5,8 +5,10 @@ import { type FastifyReply } from 'fastify';
 
 import { HealthLiveDto, type HealthReady, HealthReadyDto } from './health.dto';
 import { ReadinessService } from './readiness.service';
+import { Public } from '../authz/access.decorators';
 
 @ApiTags('health')
+@Public()
 @SkipThrottle()
 @Controller('health')
 export class HealthController {

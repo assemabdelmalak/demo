@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { serverApiClient } from './api.server';
+import { authCookieHeader, serverApiClient } from './api.server';
 
 vi.mock('next/headers', () => ({ headers: vi.fn() }));
 vi.mock('@radd/config/env', () => ({ loadEnv: () => ({ API_PUBLIC_URL: 'http://api.test' }) }));
@@ -30,5 +30,28 @@ describe('serverApiClient', () => {
 
   it('sends no request ID header when the page has none', async () => {
     expect((await sentHeaders({})).has('x-request-id')).toBe(false);
+  });
+});
+
+describe('session cookie forwarding', () => {
+  it('forwards only Better Auth cookies, in every environment spelling', async () => {
+    const sent = await sentHeaders({
+      cookie:
+        'NEXT_LOCALE=ar; radd_console_theme=dark; radd-local.session_token=abc.def; __Secure-radd.session_token=x; radd-staging.two_factor=y; other=z',
+    });
+    expect(sent.get('cookie')).toBe(
+      'radd-local.session_token=abc.def; __Secure-radd.session_token=x; radd-staging.two_factor=y',
+    );
+  });
+
+  it('sends no cookie header when the page has no session cookie', async () => {
+    expect((await sentHeaders({ cookie: 'NEXT_LOCALE=en' })).has('cookie')).toBe(false);
+    expect((await sentHeaders({})).has('cookie')).toBe(false);
+  });
+
+  it('ignores look-alike names', () => {
+    expect(authCookieHeader('raddx.session_token=1; radd-.x=2; xradd.session_token=3')).toBeNull();
+    expect(authCookieHeader('radd.session_token=1')).toBe('radd.session_token=1');
+    expect(authCookieHeader(null)).toBeNull();
   });
 });

@@ -124,12 +124,17 @@ Route groups:
 - `(kitchen)` — KDS
 - `(admin)` — super admin
 
-Layouts are role-gated and work on phone and tablet. Built with shadcn/ui.
+Layouts are role-gated and work on phone and tablet. Built with shadcn/ui (hand-adapted for now, ADR-020).
+
+As built in Phase 1 (ADR-030): `(auth)` holds sign-up, email verification, sign-in (password or code, then two-factor), password reset, two-factor settings, invitation acceptance and onboarding step 0. `(owner)` serves owners and managers. The console's server checks the role on every shell and sends a member to their own shell; super admins see `(admin)`. Shared tablets switch staff by PIN through the API (ADR-026); their screens arrive in P2-T11.
 
 ### apps/api (NestJS + Fastify)
 
 - REST `/v1/*`. OpenAPI at `/v1/docs` in non-production environments.
-- Better Auth handler mounted at `/v1/auth/*`.
+- Better Auth handler mounted at `/v1/auth/*` as a raw Fastify route; its responses keep Better Auth's JSON shape (ADR-023). The same bridge resolves the session cookie for every other route and confines shared-tablet PIN sessions (ADR-026).
+- Access control (ADR-024): every route declares a policy (`@Public`, `@AuthenticatedOnly`, `@RequirePermission(action)`, `@RequireSuperAdmin`); one global guard refuses undeclared routes, resolves the organisation (from `:rid` or the active one) and checks the role against `packages/shared/src/permissions.ts` (ADR-025). Tenant-scoped handlers run in one `withTenant` transaction shared by repositories, `AuditService` (ADR-031) and `OutboxService` (ADR-028).
+- `/v1/admin/*` and Bull Board at `/v1/admin/queues` for super admins (ADR-027), on a separate `app_admin` pool.
+- Email through `packages/mail` (`Mailer`, SMTP to Mailpit locally): auth codes are sent by the API directly, invitations through the `notify.email` queue (ADR-029).
 - Socket.IO namespaces:
   - `/diner` — participant token auth
   - `/staff` — console session auth plus restaurant membership
@@ -271,7 +276,8 @@ In short:
 **Reliability:**
 - Transactional outbox. Every state change inserts an `outbox_events` row in the same transaction.
 - The API emits immediately after commit (fast path).
-- The `outbox.dispatch` worker re-emits anything not marked dispatched within 5 s (safety net).
+- The `outbox.dispatch` worker re-emits anything not marked dispatched within 5 s (safety net). It connects as `app_worker` and reaches other tenants' events only through two definer functions granted to it alone.
+- Both emit through `@socket.io/redis-emitter`; each room goes only to its own namespace, and every event carries its outbox ID so clients can drop duplicates. Until the gateway exists (P4-T03) events reach Valkey only (ADR-028).
 - Socket.IO connection-state recovery is on (2 min window).
 
 **Scale-out:**
@@ -285,13 +291,16 @@ In short:
 - **Tenant = organization.** An organisation has 1..n restaurants.
 - Every tenant table carries `organization_id`. Restaurant-scoped tables also carry `restaurant_id`.
 - **RLS:**
-  - Policies use `current_setting('app.org_id', true)::uuid`.
-  - `withTenant(orgId, fn)` opens a transaction and runs `SET LOCAL app.org_id = $1`.
-  - The runtime DB role has no `BYPASSRLS`.
+  - Policies compare `organization_id` with `current_org_id()`, which reads `current_setting('app.org_id', true)`.
+  - `withTenant(orgId, fn)` opens a transaction and runs `set_config('app.org_id', $1, true)` (transaction-local, like `SET LOCAL`, but it accepts a parameter).
+  - The API (`app_runtime`) and worker (`app_worker`) roles have no `BYPASSRLS` (ADR-021).
   - Super admin operations use a separate `app_admin` role connection, used only by the `admin` module and fully audited.
-- **Public reads** go through:
-  - `menu_versions` (public data only; RLS policy allows reading published rows by restaurant)
+  - References between tenant tables include `organization_id`, so a crafted ID cannot cross organisations (ADR-022).
+- **Public reads** (`withPublic(fn)` sets `app.public = 'on'` for the transaction) go through:
+  - `menu_versions`: a policy allows reading the row a live restaurant currently publishes
+  - the `public_restaurants` view: public columns of live restaurants only
   - dedicated public repositories that never touch private tables without an explicit restaurant scope
+- **Before a tenant is known**, the API resolves a restaurant's organisation with the `restaurant_org(id)` function, which returns the ID and nothing else; it then checks membership and calls `withTenant`.
 - **Diner tokens** carry `rid` and `sid`. Every public session endpoint verifies the path `sid` equals the token `sid`.
 
 ## 10. Internationalisation

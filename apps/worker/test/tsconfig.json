@@ -4,7 +4,8 @@
   "compilerOptions": {
     "module": "Preserve",
     "moduleResolution": "Bundler",
-    "rootDir": "${configDir}/.."
+    // `apps/`: the notify.email test imports the API's queue producer by path (test-only).
+    "rootDir": "${configDir}/../.."
   },
   "include": ["."]
 }

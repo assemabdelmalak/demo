@@ -6,6 +6,8 @@ Fictional restaurant used for local development, E2E tests, AI evals and sales d
 
 `pnpm db:seed` must be idempotent: upsert by deterministic IDs. It publishes version 1 at the end.
 
+**As built (P1-T08, ADR-033).** `pnpm db:seed [--with-session]` (code in `packages/db/src/seed/`) writes only rows that differ, so a second run changes nothing; it needs the API's `BETTER_AUTH_SECRET` and refuses `APP_ENV=production`. Publishing needs the publish service (P2-T08): until then the seed prints "publish pending" and the restaurant stays `draft`, invisible to diners. Photos need the assets pipeline (P2-T02): until then it prints "images pending". Seeded rows bypass the API, so they produce no audit entries or outbox events.
+
 ## Organization and users
 
 | Field | Value |
@@ -15,7 +17,9 @@ Fictional restaurant used for local development, E2E tests, AI evals and sales d
 | Manager | manager@beit-tayta.test / `DemoManager!2026` |
 | Staff | staff@beit-tayta.test / `DemoStaff!2026`, PIN `1234` |
 | Kitchen | kitchen@beit-tayta.test / `DemoKitchen!2026` |
-| Super admin (local only) | admin@radd.test (in `SUPER_ADMIN_EMAILS`), TOTP seed printed in console |
+| Super admin (local only) | admin@radd.test / `DemoAdmin!2026` (in `SUPER_ADMIN_EMAILS`), TOTP seed printed in console; only when `APP_ENV` is `local` or `test` |
+
+Every account has a verified email. Names (owner Mona Haddad, manager Ziad Khoury, staff Rita Nassar, kitchen Hassan Karam) are invented. The PIN `1234` is written directly; the API itself refuses it as a weak PIN for real staff.
 
 ## Restaurant settings
 
@@ -35,6 +39,8 @@ Fictional restaurant used for local development, E2E tests, AI evals and sales d
 | Areas / tables | Indoor: tables 1–8 (4 seats) · Terrace: tables 9–12 (6 seats) |
 | Kitchen stations | Cold, Grill, Bakery, Bar |
 
+Each category's dishes go to one station: cold mezze and salads → Cold, hot mezze and grills → Grill, manakish and desserts → Bakery, drinks → Bar.
+
 ## FAQ (owner-written)
 
 | Question | Answer |
@@ -53,6 +59,8 @@ Fictional restaurant used for local development, E2E tests, AI evals and sales d
 | G3 | Extra toum · ثوم إضافي | 0–1 | Extra garlic sauce +$1.00 (adds eggs, **NOT confirmed**) |
 | G4 | Bread · خبز | 0–1 | Extra bread basket +$1.00 (adds gluten, confirmed) |
 | G5 | Sugar · السكر | exactly 1 | No sugar · Medium (وسط, default) · Sweet |
+
+G2 and G5 options add no allergens and their impact is **not confirmed** (nothing above confirms it; ADR-033), so diners see "Allergen impact of this option not confirmed" on them.
 
 ## Dishes
 
@@ -100,7 +108,7 @@ Add at least 2 dish photos (royalty-free placeholders in `infra/seed-assets/`). 
 ## Demo session (optional flag `--with-session`)
 
 - **Table 5** is open with participants Rami (host), Nour and Karim. The items are those from the worked example in GROUP_ORDERING §7.5. Round 1 is accepted.
-- **Table 9** has a pending round, to demo staff approval.
+- **Table 9** has a pending round, to demo staff approval: Lina (host) with Falafel (6), Omar with a Kafta plate (side: salad) and an Ayran.
 
 ## Chat eval anchors
 

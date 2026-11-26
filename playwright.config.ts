@@ -64,6 +64,18 @@ export default defineConfig({
       },
     },
     {
+      // The account journeys and the seeded roles again in Arabic (TESTING: every screen in ar and en).
+      name: 'tablet-console-ar',
+      testMatch: /console\.(auth|roles)\.spec\.ts/,
+      use: {
+        viewport: { width: 1024, height: 768 },
+        baseURL: CONSOLE_URL,
+        locale: 'ar-LB',
+        storageState: localeCookie('ar', CONSOLE_URL),
+        launchOptions,
+      },
+    },
+    {
       name: 'stack',
       testMatch: /stack\..*\.spec\.ts/,
       use: { baseURL: process.env.E2E_API_URL ?? 'http://localhost:4000' },

@@ -1,24 +1,10 @@
 {
   "meta": {
     "title": "Radd Menu Console",
-    "description": "Run your menu, tables, orders and insights."
+    "description": "Run your menu, tables, orders and insights.",
+    "pageTitle": "{page} · Radd Menu"
   },
-  "home": {
-    "title": "Radd Menu",
-    "subtitle": "Console",
-    "sectionsLabel": "Sections",
-    "tabs": {
-      "menu": "Menu",
-      "live": "Live floor",
-      "insights": "Insights"
-    },
-    "placeholder": "Sign-in and the owner, staff and kitchen screens arrive in the next phases.",
-    "chips": {
-      "vegan": "Vegan",
-      "spicy": "Spicy"
-    },
-    "cta": "Publish menu"
-  },
+  "brand": "Radd Menu",
   "theme": {
     "darkMode": "Dark mode"
   },
@@ -37,5 +23,222 @@
     "title": "Page not found",
     "body": "This page doesn't exist or has moved.",
     "home": "Back to the console"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "body": "We couldn't load this page. Check your connection and try again.",
+    "retry": "Try again"
+  },
+  "auth": {
+    "common": {
+      "name": "Your name",
+      "email": "Email",
+      "password": "Password",
+      "newPassword": "New password",
+      "passwordHint": "At least 12 characters. A short sentence you'll remember works well.",
+      "showPassword": "Show password",
+      "code": "6-digit code",
+      "codeHint": "It expires 5 minutes after we send it.",
+      "sendNewCode": "Send a new code",
+      "sendNewCodeIn": "Send a new code in {seconds, plural, one {# second} other {# seconds}}",
+      "newCodeSent": "A new code is on its way if this address can receive one. Check your inbox and spam folder.",
+      "backToSignIn": "Back to sign in",
+      "working": "Please wait…"
+    },
+    "signUp": {
+      "title": "Create your account",
+      "subtitle": "Set up your restaurant's console. You'll confirm your email next.",
+      "submit": "Create account",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "verifyEmail": {
+      "title": "Confirm your email",
+      "subtitle": "We've sent a 6-digit code to the address below. It can take a minute to arrive.",
+      "submit": "Confirm email",
+      "existing": "Already have an account with this address?",
+      "signIn": "Sign in instead"
+    },
+    "signIn": {
+      "title": "Sign in",
+      "subtitle": "Welcome back to Radd Menu.",
+      "methods": "How do you want to sign in?",
+      "withPassword": "Password",
+      "withCode": "Email code",
+      "submit": "Sign in",
+      "forgot": "Forgot password?",
+      "sendCode": "Email me a code",
+      "codeSent": "If there's an account for <email>{address}</email>, a sign-in code is on its way.",
+      "codeTwoFactorNote": "Using an authenticator app? Sign in with your password instead.",
+      "otherEmail": "Use a different email",
+      "noAccount": "New to Radd Menu?",
+      "signUp": "Create an account",
+      "passwordChanged": "Your password has been changed. Sign in with the new one."
+    },
+    "twoFactorChallenge": {
+      "title": "Two-step verification",
+      "subtitle": "Enter the 6-digit code from your authenticator app.",
+      "code": "Authenticator code",
+      "submit": "Verify",
+      "useBackup": "Use a backup code instead",
+      "useApp": "Use your authenticator app instead",
+      "backupCode": "Backup code",
+      "backupHint": "Each backup code works once."
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "subtitle": "Enter your email and we'll send you a code to choose a new password.",
+      "submit": "Send code"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "subtitle": "Enter the code we sent to your email and choose a new password. You'll be signed out on every device.",
+      "submit": "Save new password"
+    },
+    "twoFactor": {
+      "title": "Two-step verification",
+      "statusOn": "On. When you sign in with your password, we'll also ask for a code from your authenticator app.",
+      "statusOff": "Off. Add a code from an authenticator app to your password for extra protection.",
+      "enable": "Turn on",
+      "disable": "Turn off",
+      "confirmPassword": "Enter your password to continue.",
+      "continue": "Continue",
+      "cancel": "Cancel",
+      "scanTitle": "Scan the QR code",
+      "scanHelp": "Open your authenticator app and scan this code. If you can't scan it, enter the setup key by hand.",
+      "qrLabel": "QR code for your authenticator app",
+      "secret": "Setup key",
+      "confirmCode": "Code from the app",
+      "confirm": "Confirm and turn on",
+      "backupTitle": "Save your backup codes",
+      "backupHelp": "Each code signs you in once if you lose your phone. They won't be shown again, so copy them or write them down now.",
+      "backupList": "Backup codes",
+      "copy": "Copy codes",
+      "copied": "Codes copied.",
+      "done": "I've saved them",
+      "turnedOn": "Two-step verification is on.",
+      "turnedOff": "Two-step verification is off.",
+      "back": "Back to the console"
+    },
+    "invitation": {
+      "title": "Join {organization}",
+      "body": "{inviter} invited you to join {organization} as {role}.",
+      "accept": "Accept invitation",
+      "decline": "Decline",
+      "declined": "You declined the invitation. You can close this page.",
+      "signedOutTitle": "You've been invited",
+      "signedOutBody": "Sign in, or create an account, with the email address the invitation was sent to. You'll come back here afterwards.",
+      "signIn": "Sign in",
+      "signUp": "Create an account",
+      "loading": "Loading the invitation…",
+      "signedInAs": "Signed in as <email>{address}</email>.",
+      "otherAccount": "Use another account"
+    },
+    "onboarding": {
+      "title": "Name your organisation",
+      "subtitle": "Usually your restaurant's or your group's name. You can change it later.",
+      "name": "Organisation name",
+      "nameHint": "For example: Beit Tayta",
+      "submit": "Create organisation"
+    }
+  },
+  "roles": {
+    "owner": "owner",
+    "manager": "manager",
+    "staff": "staff",
+    "kitchen": "kitchen"
+  },
+  "roleBadge": {
+    "owner": "Owner",
+    "manager": "Manager",
+    "staff": "Staff",
+    "kitchen": "Kitchen"
+  },
+  "validation": {
+    "email": {
+      "too_small": "Enter your email address.",
+      "too_big": "This email address is too long.",
+      "invalid_format": "Enter an email address like name@example.com."
+    },
+    "name": {
+      "too_small": "Enter your name.",
+      "too_big": "Use 100 characters or fewer.",
+      "invalid_format": "Use one line, without special characters."
+    },
+    "organizationName": {
+      "too_small": "Enter a name for your organisation.",
+      "too_big": "Use 100 characters or fewer.",
+      "invalid_format": "Use one line, without special characters."
+    },
+    "newPassword": {
+      "too_small": "Use at least 12 characters.",
+      "too_big": "Use 128 characters or fewer."
+    },
+    "password": {
+      "too_small": "Enter your password.",
+      "too_big": "Use 128 characters or fewer."
+    },
+    "code": {
+      "invalid_format": "Enter the 6-digit code."
+    },
+    "backupCode": {
+      "too_small": "Enter a backup code.",
+      "too_big": "That's longer than a backup code."
+    },
+    "generic": "Check this field."
+  },
+  "errors": {
+    "invalidCredentials": "That email and password don't match. Check them and try again, or sign in with an email code.",
+    "emailNotVerified": "Confirm your email address first. Enter the code we email you.",
+    "invalidCode": "That code isn't right. Check the latest email from us and try again.",
+    "codeExpired": "That code has expired. Send a new one and try again.",
+    "tooManyAttempts": "Too many wrong codes. Send a new code and try again.",
+    "invalidTotp": "That code isn't right. Enter the current code from your authenticator app.",
+    "invalidBackupCode": "That backup code isn't right, or it has already been used.",
+    "twoFactorExpired": "This sign-in took too long. Sign in with your password again.",
+    "accountLocked": "Too many failed attempts. Wait a few minutes, then try again.",
+    "wrongPassword": "That password isn't right. Try again.",
+    "passwordTooShort": "Use at least 12 characters.",
+    "passwordTooLong": "Use 128 characters or fewer.",
+    "invalidEmail": "Enter an email address like name@example.com.",
+    "rateLimited": "Too many attempts. Try again in {seconds, plural, one {# second} other {# seconds}}.",
+    "rateLimitedLater": "Too many attempts. Wait a moment, then try again.",
+    "network": "We couldn't reach Radd Menu. Check your connection and try again.",
+    "unavailable": "Radd Menu is having trouble right now. Try again in a few minutes.",
+    "orgLimit": "You've reached the number of organisations one account can own.",
+    "orgSuspended": "This organisation is suspended. Contact Radd Menu support.",
+    "invitationNotFound": "This invitation has expired, was already answered, or was sent to another address. Ask the person who invited you to send a new one.",
+    "notRecipient": "This invitation was sent to a different email address. Sign in with that address to answer it.",
+    "alreadyMember": "You're already a member of this organisation.",
+    "signedOut": "You've been signed out. Sign in again to continue.",
+    "generic": "Something went wrong. Try again, and if it keeps happening, contact support."
+  },
+  "shell": {
+    "skipToContent": "Skip to content",
+    "navLabel": "Main",
+    "openMenu": "Open menu",
+    "menuTitle": "Navigation",
+    "account": "Account",
+    "signedInAs": "Signed in as <email>{address}</email>",
+    "twoFactor": "Two-step verification",
+    "signOut": "Sign out",
+    "signOutFailed": "We couldn't sign you out. Check your connection and try again.",
+    "admin": "Super admin"
+  },
+  "nav": {
+    "menu": "Menu",
+    "allergens": "Allergens",
+    "tables": "Tables",
+    "team": "Team",
+    "insights": "Insights",
+    "settings": "Settings",
+    "floor": "Live floor",
+    "bills": "Bills",
+    "kitchen": "Kitchen",
+    "organizations": "Organisations",
+    "queues": "Queues"
+  },
+  "placeholder": {
+    "body": "This page arrives in a later phase. There's nothing to set up here yet."
   }
 }

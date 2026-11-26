@@ -1,0 +1,1 @@
+ALTER TABLE "member" ADD COLUMN "pin_disabled_at" timestamp with time zone;

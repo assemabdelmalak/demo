@@ -15,6 +15,7 @@ Read this whole file at the start of every session.
 
 ## 1. Read order
 
+0. **`docs/HANDOFF.md`: the central record (status of every phase, next task, setup, rules, risks, owner to-dos and a log of every session). Start every session here and update it before you stop.**
 1. `CLAUDE.md` (this file)
 2. `docs/PRD.md`: what and why
 3. `docs/ARCHITECTURE.md`: stack and system design
@@ -132,6 +133,7 @@ radd-menu/
 │  ├─ ai/           LLM client, prompts, tools, safety guards, evals
 │  ├─ ui/           shared React components + design tokens
 │  ├─ api-client/   generated OpenAPI types, typed fetch client, socket event types
+│  ├─ mail/         Mailer interface, SMTP adapter, plain auth email templates (ADR-029)
 │  └─ config/       tsconfig, eslint, prettier, env schemas
 ├─ infra/           docker-compose.dev.yml, Dockerfiles, k6 scripts, ops scripts
 ├─ docs/

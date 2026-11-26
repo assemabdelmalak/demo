@@ -9,6 +9,7 @@ ignoredBuiltDependencies:
   # Prebuilt binaries ship as optional dependencies; their postinstall is only a fallback.
   - '@swc/core'
   - unrs-resolver
+  - esbuild
   # Optional native speed-ups of the Docker client used by Testcontainers (SSH transport only).
   - cpu-features
   - ssh2

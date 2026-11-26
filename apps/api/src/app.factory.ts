@@ -1,11 +1,23 @@
 import helmet from '@fastify/helmet';
+import { Logger as NestLogger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { SwaggerModule } from '@nestjs/swagger';
 import { type FastifyError, type FastifyReply, type FastifyRequest } from 'fastify';
 import { Logger } from 'nestjs-pino';
 
+import { QUEUE_NAMES } from '@radd/shared';
+
+import { registerBullBoard } from './admin/bull-board';
 import { type AppModuleOptions, AppModule } from './app.module';
+import { AuditService } from './audit/audit.service';
+import { SignInLockout } from './auth/address-limits';
+import { type AuthRateLimitStorage } from './auth/auth-rate-limit';
+import { type Auth } from './auth/auth.config';
+import { registerAuth } from './auth/auth.fastify';
+import { AUTH, AUTH_OPTIONS, AUTH_RATE_LIMITER, type AuthModuleOptions } from './auth/auth.module';
+import { authUrlParts, LOCALE_HEADER } from './auth/auth.utils';
+import { PinSessionGate } from './auth/pin-session';
 import { resolveClientIp } from './common/actor';
 import { problemTypeBase, toProblem } from './common/problem';
 import { sendProblem } from './common/problem.filter';
@@ -13,6 +25,7 @@ import { genRequestId, REQUEST_ID_HEADER } from './common/request-id';
 import { type ApiEnv } from './config/env.module';
 import { IDEMPOTENCY_HEADER, IDEMPOTENT_REPLAYED_HEADER } from './idempotency/idempotent.decorator';
 import { buildOpenApiDocument, DOCS_PATH } from './openapi/document';
+import { QueueProducer } from './queues/queue-producer';
 
 export const API_PREFIX = 'v1';
 
@@ -48,20 +61,49 @@ export async function createApp(
   app.setGlobalPrefix(API_PREFIX);
   app.enableShutdownHooks();
 
-  app
-    .getHttpAdapter()
-    .getInstance()
-    .addHook('onRequest', (request, reply, done) => {
-      void reply.header(REQUEST_ID_HEADER, request.id);
-      request.clientIp = resolveClientIp(request, env.CLIENT_IP_HEADER);
-      done();
-    });
+  const fastify = app.getHttpAdapter().getInstance();
+  fastify.addHook('onRequest', (request, reply, done) => {
+    void reply.header(REQUEST_ID_HEADER, request.id);
+    request.clientIp = resolveClientIp(request, env.CLIENT_IP_HEADER);
+    done();
+  });
+
+  // After the client-IP hook: the auth bridge forwards `request.clientIp`, and its session hook
+  // must set `request.principal` before the global throttler guard reads it (ADR-016).
+  const authOptions = app.get<Required<AuthModuleOptions>>(AUTH_OPTIONS);
+  await registerAuth(fastify, app.get<Auth>(AUTH), env, {
+    limiter: app.get<AuthRateLimitStorage>(AUTH_RATE_LIMITER),
+    codeRequestLimit: authOptions.codeRequestLimit,
+    signInLockout: authOptions.signInLockout ? app.get(SignInLockout) : undefined,
+    logger: new NestLogger('AuthBridge'),
+    pinSessions: app.get(PinSessionGate),
+  });
+
+  // After the auth bridge: its root hook resolves the session this plugin's guard reads (ADR-027).
+  const queues = app.get(QueueProducer);
+  const bullBoardLogger = new NestLogger('BullBoard');
+  await registerBullBoard(fastify, {
+    queues: QUEUE_NAMES.map((name) => queues.queue(name)),
+    allowlist: env.SUPER_ADMIN_EMAILS,
+    apiOrigin: authUrlParts(env.BETTER_AUTH_URL).origin,
+    typeBase,
+    audit: app.get(AuditService),
+    onAuditError: (error) => {
+      bullBoardLogger.error({ err: error }, 'Bull Board change not audited');
+    },
+  });
 
   app.enableCors({
     origin: env.TRUSTED_ORIGINS,
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['content-type', 'authorization', REQUEST_ID_HEADER, IDEMPOTENCY_HEADER],
+    allowedHeaders: [
+      'content-type',
+      'authorization',
+      REQUEST_ID_HEADER,
+      IDEMPOTENCY_HEADER,
+      LOCALE_HEADER,
+    ],
     exposedHeaders: [REQUEST_ID_HEADER, IDEMPOTENT_REPLAYED_HEADER, 'retry-after'],
     maxAge: 600,
   });

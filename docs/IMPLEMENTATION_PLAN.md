@@ -216,7 +216,7 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
 ### P1-T03 DB roles and Row Level Security
 
 **Do:**
-- Hand-written SQL migration creating the roles `app_migrator` (owner), `app_runtime` and `app_admin` (`BYPASSRLS`), with grants.
+- Roles `app_migrator` (owner), `app_runtime` (API), `app_worker` (worker) and `app_admin` (`BYPASSRLS`). A schema owner cannot create roles or grant `BYPASSRLS`, so the roles come from a superuser bootstrap script, `packages/db/sql/bootstrap-roles.sql`, run once per environment; grants are per table in hand-written SQL migrations (ADR-021).
 - Enable RLS on every tenant table, with the policy:
 
   ```sql
@@ -228,7 +228,7 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
   - `menu_versions` rows referenced by a live restaurant's pointer are readable when `current_setting('app.public', true) = 'on'`;
   - the same for `restaurants` public columns via a dedicated SQL view `public_restaurants`.
 - Helpers:
-  - `withTenant(orgId, fn)` — transaction + `SET LOCAL app.org_id`;
+  - `withTenant(orgId, fn)` — transaction + transaction-local `app.org_id` (`set_config(…, true)`, the parameterised form of `SET LOCAL`);
   - `withPublic(fn)` — `SET LOCAL app.public='on'`;
   - `withAdmin(fn)` — separate pool using `app_admin`.
 - `BaseTenantRepository` requires an org context and is used by every repository.
@@ -249,12 +249,12 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
   - organization plugin with roles `owner`, `manager`, `staff`, `kitchen` and access-control statements mirroring `permissions.ts`;
   - twoFactor plugin (TOTP).
 - Cookies on the parent domain. Trusted origins from env.
-- Run `npx @better-auth/cli generate` and reconcile the output with the Drizzle schema (DM §2 additional fields).
+- Run Better Auth's schema generator and reconcile the output with the Drizzle schema (DM §2 additional fields). The schema is hand-maintained in `packages/db`; Better Auth refuses to start on a mismatch (ADR-023).
 - **Console pages:**
   - sign up (name, email, password);
   - verify email (OTP);
   - sign in (password or OTP);
-  - forgot password;
+  - forgot password (reset by emailed code; link-based reset is disabled, ADR-023);
   - 2FA setup.
 - **Onboarding step 0:** create an organisation (name). The current user becomes owner.
 
@@ -270,7 +270,7 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
 - `packages/shared/permissions.ts`: actions × roles matrix (PRD + GO §6). Includes `assertCan(actor, action, resource)`.
 - Nest pieces:
   - `@CurrentActor()`;
-  - `RestaurantScopeGuard`, which resolves `:rid` → org, checks membership, and sets the tenant context (via AsyncLocalStorage + `withTenant` per request);
+  - `RestaurantScopeGuard`, which resolves `:rid` → org, checks membership, and sets the tenant context (via AsyncLocalStorage + `withTenant` per request). As built, one global default-deny guard does this for every route, and a tenant-transaction interceptor opens the `withTenant` transaction (ADR-024);
   - `@RequirePermission(action)` decorator.
 
 **Accept:** every console route declares a permission. CI lint rule (custom ESLint or a unit test scanning Nest metadata) fails on undecorated routes.
@@ -282,7 +282,7 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
 **Do:**
 - Admin guard: allowlisted email + 2FA verified within the session.
 - `/v1/admin/*` skeleton. Bull Board at `/v1/admin/queues`.
-- `staff_devices` registration: a manager registers a device and receives a one-time token, stored as an HttpOnly device cookie on the console origin.
+- `staff_devices` registration: a manager registers a device and receives a one-time token, stored as an HttpOnly device cookie. The cookie is host-only on the **API host** (the API must receive it; the console origin never sees it) and the token never appears in a response body (ADR-026).
 - PIN switch endpoint (argon2id hash, 5 attempts → 5-minute lockout).
 
 **Accept:**
@@ -295,7 +295,7 @@ Scripts: `pnpm dev:infra` and `pnpm dev:infra:down`.
 
 **Do:**
 - `AuditService.record({ action, entityType, entityId, before, after })`, automatically enriched with actor, org, restaurant, requestId and ipHash.
-- `OutboxService.add(tx, { type, aggregate, rooms, payload })` inside the same transaction. A `publishAfterCommit` hook emits to Socket.IO. The worker job `outbox.dispatch` re-emits rows not dispatched within 5 s.
+- `OutboxService.add(tx, { type, aggregate, rooms, payload })` inside the same transaction. A `publishAfterCommit` hook emits to Socket.IO (built as `withTenant`'s `afterCommit` and a Redis-emitter publisher; the gateway arrives in P4-T03, ADR-028). The worker job `outbox.dispatch` re-emits rows not dispatched within 5 s.
 
 **Accept:** audit rows are written in the same transaction as the change. Outbox rows are marked dispatched.
 

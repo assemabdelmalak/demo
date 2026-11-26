@@ -6,6 +6,7 @@ import { Redis } from 'ioredis';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { detectIntegrationRuntime, startValkey, type StartedService } from '@radd/config/testing';
+import { MemoryMailer } from '@radd/mail';
 import { DEFAULT_JOB_OPTIONS, QUEUE_PREFIX, type QueuePayloadInput } from '@radd/shared';
 
 import { freePort, testEnv } from './env';
@@ -19,9 +20,14 @@ const runtime = await detectIntegrationRuntime(['valkey']);
 
 async function startWorker(redisUrl: string): Promise<INestApplicationContext> {
   const env = testEnv({ REDIS_URL: redisUrl, WORKER_HEALTH_PORT: String(await freePort()) });
-  const app = await NestFactory.createApplicationContext(WorkerModule.register(env), {
-    logger: false,
-  });
+  // A memory mailer: locally Valkey is shared, so this worker may also pick up queued emails.
+  const app = await NestFactory.createApplicationContext(
+    // No database here: the outbox dispatcher is covered by outbox-dispatch.int.test.ts.
+    WorkerModule.register(env, { mailer: new MemoryMailer(), outbox: false }),
+    {
+      logger: false,
+    },
+  );
   await app.init();
   return app;
 }

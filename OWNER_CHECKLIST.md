@@ -22,7 +22,7 @@ This file lists all of it, in the order you'll need it. Tick items as you go.
    - Start the next phase with: *"Start Phase N. Plan first."*
 6. **Watch the "Needs owner" list** in `docs/PROGRESS.md`. That's where the agent asks you for keys and decisions.
 
-> Tip: keep one Claude Code session per phase. Long sessions drift. Each new session re-reads CLAUDE.md and PROGRESS.md, so nothing is lost.
+> Tip: since Phase 1 the work runs **one task per session**. Long sessions drift. Each new session starts from `docs/HANDOFF.md` (status, next task, rules, risks and a log of every session), so nothing is lost. The prompt in HANDOFF §0 works for every task; keep its second sentence, which lets the session push to the phase branch.
 
 ---
 
@@ -146,7 +146,12 @@ Use your S24 plus 2–3 friends' phones (at least one iPhone, one older Android)
 
 **P0** — Open the staging URLs (or ask the agent for a screen recording if staging isn't up yet). Check that CI is green on GitHub.
 
-**P1** — Sign up with a new email. Receive the code. Create an organisation. Log out, then log in as the demo owner (`owner@beit-tayta.test`).
+**P1** — Staging does not exist yet, so run it locally (the PR lists the commands) or use the screenshots in the PR.
+1. Sign up with a new email. Read the 6-digit code in the local mail inbox (Mailpit, http://localhost:8025). Create an organisation.
+2. Sign out, then sign in as the demo owner (`owner@beit-tayta.test` / `DemoOwner!2026`): you see Menu, Allergens, Tables, Team, Insights and Settings (empty pages).
+3. Sign in as the manager (`manager@…` / `DemoManager!2026`): the same navigation. As staff (`staff@…` / `DemoStaff!2026`): Live floor and Bills. As kitchen (`kitchen@…` / `DemoKitchen!2026`): Kitchen.
+4. Switch to Arabic and repeat one sign-in: the layout turns right-to-left and every label is Arabic.
+5. On the PR, check that the `test-int` job (tenancy and permission tests) is green.
 
 **P2** — On your phone:
 1. Edit Beit Tayta: change a price, add a photo, 86 a dish.

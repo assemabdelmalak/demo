@@ -27,6 +27,14 @@ export function sendProblem(
         code: 'INTERNAL',
         requestId: request.id,
       };
+  // A `retryAfter` extension (seconds) on a 429 or 503 is also the standard header clients read.
+  if (
+    (body.status === 429 || body.status === 503) &&
+    typeof body.retryAfter === 'number' &&
+    Number.isFinite(body.retryAfter)
+  ) {
+    void reply.header('retry-after', String(Math.max(1, Math.ceil(body.retryAfter))));
+  }
   void reply
     .status(body.status)
     .header('content-type', PROBLEM_CONTENT_TYPE)

@@ -56,10 +56,28 @@ describe('.env.example', () => {
 
   it('has no variable that no app reads (no drift)', () => {
     const read = new Set(apps.flatMap(schemaKeys));
-    // Read by tooling that lands later (migrations in P1, AI evals in P7), not by the apps.
-    const infraOnly = new Set(['DATABASE_URL_MIGRATOR', 'EVAL_BUDGET_USD']);
+    // Read by tooling that lands later (AI evals in P7), not by the apps.
+    const infraOnly = new Set(['EVAL_BUDGET_USD']);
     const unread = Object.keys(example).filter((key) => !read.has(key) && !infraOnly.has(key));
     expect(unread).toEqual([]);
+  });
+});
+
+describe('database credentials', () => {
+  it("gives the worker its own role's URL and never the API's", () => {
+    expect(schemaKeys('worker')).toContain('DATABASE_URL_WORKER');
+    expect(schemaKeys('worker')).not.toContain('DATABASE_URL');
+    expect(schemaKeys('worker')).not.toContain('DATABASE_URL_ADMIN');
+    expect(schemaKeys('api')).not.toContain('DATABASE_URL_WORKER');
+    expect(new URL(example.DATABASE_URL_WORKER ?? '').username).toBe('app_worker');
+  });
+
+  it('gives the seed the API role for tenant rows and the admin role for the plan only', () => {
+    expect(
+      schemaKeys('seed')
+        .filter((key) => key.startsWith('DATABASE_URL'))
+        .sort(),
+    ).toEqual(['DATABASE_URL', 'DATABASE_URL_ADMIN']);
   });
 });
 
@@ -152,6 +170,12 @@ describe('secrets outside local development', () => {
     expect(JSON.stringify(issues)).not.toContain('hunter2');
   });
 
+  it("holds the seed to the API's rule for the auth secret it shares", () => {
+    expect(issuesFor('seed', { ...example, APP_ENV: 'staging' })).toEqual([
+      expect.objectContaining({ key: 'BETTER_AUTH_SECRET' }),
+    ]);
+  });
+
   it('holds the console to the same rule for its one secret', () => {
     expect(issuesFor('console', { ...example, APP_ENV: 'production' })).toEqual([
       expect.objectContaining({ key: 'TRACE_SAMPLING_SECRET' }),
@@ -182,12 +206,12 @@ describe('loadEnv / loadEnvOrExit', () => {
       throw new Error('process.exit');
     });
     const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    const { DATABASE_URL: _db, ...rest } = example;
+    const { DATABASE_URL_WORKER: _db, ...rest } = example;
 
     expect(() => loadEnvOrExit('worker', rest)).toThrow('process.exit');
 
     expect(exit).toHaveBeenCalledWith(1);
-    expect(stderr.mock.calls.join('')).toContain('DATABASE_URL: is required');
+    expect(stderr.mock.calls.join('')).toContain('DATABASE_URL_WORKER: is required');
   });
 });
 

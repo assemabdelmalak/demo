@@ -31,3 +31,21 @@ describe('proxy request IDs', () => {
     expect(isUuidV7(response.headers.get('x-request-id'))).toBe(true);
   });
 });
+
+describe('proxy request path', () => {
+  const forwardedPath = (response: Response) =>
+    response.headers.get('x-middleware-request-x-radd-path');
+
+  it('passes the path and query to server components', () => {
+    expect(forwardedPath(proxy(new NextRequest('http://localhost/team?page=2')))).toBe(
+      '/team?page=2',
+    );
+  });
+
+  it('overwrites a value the client sent', () => {
+    const response = proxy(
+      new NextRequest('http://localhost/menu', { headers: { 'x-radd-path': '//evil.example' } }),
+    );
+    expect(forwardedPath(response)).toBe('/menu');
+  });
+});
