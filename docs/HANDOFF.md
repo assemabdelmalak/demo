@@ -48,7 +48,7 @@ together and see a per-person tab; restaurants import menus with AI, confirm all
 | Phase | Name | State |
 |---|---|---|
 | P0 | Foundation | ✅ merged to `master` ([PR #1](https://github.com/assemabdelmalak/demo/pull/1)), owner sign-off 2026-11-10 |
-| **P1** | **Data model, auth, tenancy** | **🟨 in progress** (T01–T08 done; security review, docs + PR left) |
+| **P1** | **Data model, auth, tenancy** | **🟨 in progress** (T01–T08 and the security review done; docs + PR left) |
 | P2 | Restaurant setup and menu management (console) | ⬜ |
 | P3 | Diner menu PWA | ⬜ |
 | P4 | Table sessions and group ordering | ⬜ |
@@ -74,15 +74,15 @@ The owner approved the plan in `docs/plans/phase-01-plan.md` on 2026-11-11; its 
 | P1-T06 Super admin, staff devices, PIN | ✅ CI green ([CI 62](https://github.com/assemabdelmalak/demo/actions/runs/45254520210), [Docker 34](https://github.com/assemabdelmalak/demo/actions/runs/45254520229)) | Done 2026-11-23, see §12 |
 | P1-T07 Audit and outbox | ✅ CI green ([CI 68](https://github.com/assemabdelmalak/demo/actions/runs/45630173651), [Docker 38](https://github.com/assemabdelmalak/demo/actions/runs/45630173552)) | Done 2026-11-25, see §12 |
 | P1-T08 Seed Beit Tayta | ✅ CI green ([CI 72](https://github.com/assemabdelmalak/demo/actions/runs/45739297307), [Docker 42](https://github.com/assemabdelmalak/demo/actions/runs/45739297263)) | Done 2026-11-26, see §12; ADR-033 |
-| Security review of Phase 1 | ⬜ **next** | Started twice before and cut off; never finished |
-| Docs pass, Phase 1 PR, demo checkpoint | ⬜ | Stops for the owner's review |
+| Security review of Phase 1 | ✅ CI green ([CI 78](https://github.com/assemabdelmalak/demo/actions/runs/45838997014), [Docker 47](https://github.com/assemabdelmalak/demo/actions/runs/45838996851)) | Done 2026-11-26, see §12; report `docs/SECURITY_REVIEW_P1.md` |
+| Docs pass, Phase 1 PR, demo checkpoint | ⬜ **next** | Stops for the owner's review |
 
-**Last verified numbers (2026-11-26, after P1-T08):** lint, typecheck, format, i18n sync and
-build pass; `pnpm db:seed` twice gives "0 rows created, 0 updated" on the second run. Unit tests:
-shared 524, api 104, config 62, console 50, ui 46, db 32, mail 10, worker 9, diner 6,
-api-client 2. Integration: api 120, db 52, worker 14, config 2 of 4 (the other 2 assert
-PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16 by design; green in CI).
-Playwright: 57 passed (en + ar) against the full local stack with the seed.
+**Last verified numbers (2026-11-26, after the security review):** lint, typecheck, format and
+build pass. Unit tests: shared 524, api 104, config 62, console 50, ui 46, db 32, mail 10,
+worker 9, diner 6, api-client 2. Integration: api 121, db 52, worker 14, config 2 of 4 (the other
+2 assert PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16 by design; green in CI).
+Playwright: 57 passed (en + ar) after P1-T08; not re-run locally after the review (API-only
+changes), CI's e2e-smoke is green on it.
 
 ---
 
@@ -90,15 +90,12 @@ Playwright: 57 passed (en + ar) against the full local stack with the seed.
 
 Each has a detailed prompt in `docs/sessions/`; the universal prompt in §0 also works.
 
-1. **Security review of Phase 1** — `docs/sessions/04-security-review.md`. Include the new
-   surface: the PIN switch (public route), PIN sessions, device cookie, `/v1/admin/*`, Bull Board,
-   from P1-T07 the outbox definer functions (`app_worker` only), `DATABASE_URL_WORKER`, the
-   audit redaction list (`apps/api/src/audit/audit-state.ts`) and the `afterCommit` hook, and from
-   P1-T08 the seed (`packages/db/src/seed/`: refuses production, known demo passwords wherever it
-   runs, PIN `1234` written past the weak-PIN check, super admin only in local and test).
-2. **Docs pass, Phase 1 PR, demo checkpoint** — `docs/sessions/05-docs-and-pr.md`. Stops and
-   waits for the owner. The PR's demo steps can now use the seeded accounts.
-3. **Phase 2 plan** — start in plan mode: summarise the phase goal, list P2-T01…T11 and the files
+1. **Docs pass, Phase 1 PR, demo checkpoint** — `docs/sessions/05-docs-and-pr.md`. Stops and
+   waits for the owner. The PR's demo steps can now use the seeded accounts. Link
+   `docs/SECURITY_REVIEW_P1.md` in the PR body and list its open items (M1, M2, L1–L7). If the
+   owner has said yes to the per-address limits (§11) before this session, they are a separate
+   small fix session first.
+2. **Phase 2 plan** — start in plan mode: summarise the phase goal, list P2-T01…T11 and the files
    to touch, list open questions, wait for approval (CLAUDE §2.2). Then one task per session.
 
 After Phase 1 the queue is the plan itself, task by task (titles from `IMPLEMENTATION_PLAN.md`):
@@ -147,8 +144,8 @@ demo checkpoint (CLAUDE §2.5).
   branch, fast-forward it to your work (`git push origin HEAD:phase/01-data-auth-tenancy`; never
   force). If not, say in your report that the phase branch needs fast-forwarding, and record your
   branch in §12.
-- **Right now:** nothing pending. P1-T08 was done on `ccr-4a469ea9-ynf5ub` and the phase branch
-  was fast-forwarded to it (the owner's prompt allowed it), so start from
+- **Right now:** nothing pending. The security review was done on `ccr-5ac9a7bd-5ahjj9` and the
+  phase branch was fast-forwarded to it (the owner's prompt allowed it), so start from
   `origin/phase/01-data-auth-tenancy`.
 
 ---
@@ -268,6 +265,7 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 | Integration test patterns | `apps/api/test/*.int.test.ts`, `apps/api/test/support/*` |
 | Demo seed (Beit Tayta) | `packages/db/src/seed/*` (`data.ts` is SEED_DATA as code; `run.ts` writes it; `main.ts` is `pnpm db:seed`), export `@radd/db/seed` |
 | Browser tests | `e2e/*.spec.ts` (shared console helpers in `e2e/console-helpers.ts`; seeded roles in `console.roles.spec.ts`), `playwright.config.ts` |
+| Phase 1 security review (findings, requests, real outputs) | `docs/SECURITY_REVIEW_P1.md` |
 | Agent setup without Docker | `infra/scripts/agent-env.sh`, `infra/scripts/agent-services.sh`, `infra/scripts/mail-catcher.mjs` |
 
 ## 9. Docs debt (session "Docs pass" clears it; earlier if you touch the area)
@@ -292,7 +290,9 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
     tablet before. A PIN session without the device cookie is ignored for that request (not
     ended: the console server renders with the session cookie alone); one older than 12 hours,
     with no device, or with a revoked device is ended. Under `/v1/auth/*` it may call only
-    `get-session` (never refreshed) and `sign-out`.
+    `get-session` (never refreshed) and `sign-out`; the bridge applies this whenever a request
+    carries any Cookie header, using Better Auth's own reading of the session (security review
+    F1). `pin_hash` and `pin_disabled_at` are not declared to Better Auth at all (F2).
   - ADR-027 as built: `isSuperAdmin` on `/v1/me` uses the same verdict as the guard; the admin
     pool (`app_admin`, max 4 connections, application name `radd-api-admin`) lives in
     `AdminModule` only; Bull Board refuses changes whose `Origin` is not the API's own, and every
@@ -361,6 +361,29 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
   - The seed encrypts the TOTP secret with `better-auth/crypto` (a dev dependency of `@radd/db`);
     a Better Auth upgrade that changes that format is caught by `apps/api/test/seed.int.test.ts`.
 
+- **New in the security review** (details, requests and real outputs in
+  `docs/SECURITY_REVIEW_P1.md`):
+  - **M1 (Medium):** emailed codes are limited per IP only; from many IPs anyone can send an
+    address unlimited codes (mailbox flooding, email cost) and slowly guess the sign-in code of a
+    password-only account (3 guesses per code). Fix: a per-address cap on the two code-request
+    paths in the bridge, the same for unknown addresses.
+  - **M2 (Medium):** password sign-in is limited per IP only; 15 wrong passwords from 15 IPs were
+    never slowed. Fix: a per-address failure counter with a short pause. Both wait on the owner's
+    yes (§11) because a per-address limit lets someone hold a victim's sign-in shut.
+  - **L1:** `/v1/auth/list-sessions` returns the user's other sessions with raw tokens (a full
+    session only since F1); disable it or strip `token` before a sessions screen exists.
+  - **L2:** `user.image` accepts any string, `javascript:` URLs included; validate before a
+    screen shows it.
+  - **L3:** our own `/v1/*` writes do not check `Origin`; CSRF protection rests on SameSite=Lax
+    and every write needing JSON or `Idempotency-Key` (preflight). Add an Origin check on
+    cookie-authenticated writes, since `m.` and `cdn.` share the cookie's site.
+  - **L4/L5:** rate limits trust `CLIENT_IP_HEADER` (hold the Cloudflare-only firewall rule;
+    Tunnel or Authenticated Origin Pulls in P10) and give each IPv6 /64 its own bucket.
+  - **L6:** the seed refuses `APP_ENV=production` but does not look at the target database; a local
+    `.env` pointed at production would write the demo accounts there.
+  - **L7:** the cluster's `postgres` database keeps `PUBLIC` connect and temp rights (no data);
+    revoke them in the cluster half of `bootstrap-roles.sql`.
+
 ## 11. Owner: what only you can do
 
 The full list with explanations is "Needs owner" in `docs/PROGRESS.md`; the per-phase test
@@ -370,6 +393,10 @@ scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
   options are seeded with their allergen impact **not confirmed** (SEED_DATA confirms only the
   protein and bread options), so diners will see "allergen impact not confirmed" on them; the local
   super admin's password is `DemoAdmin!2026`; staff names are invented.
+- **Per-address sign-in limits (security review M1, M2):** say yes to adding them (recommended
+  before staging: 5 codes an hour per address, a 15-minute pause after 10 wrong passwords), or
+  choose a different trade. The catch: anyone who knows an address can then keep its owner from
+  signing in for a few minutes at a time.
 - **Let sessions push the phase branch:** keep the sentence in §0 in your prompt (the prompts in
   `docs/sessions/` already include it).
 - Repository visibility (public vs private), the licence text, branch protection on `master`,
@@ -382,6 +409,29 @@ scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
 ## 12. Session log
 
 Newest first. Each session adds one entry: date, task, branch and head, result, CI, notes.
+
+### 2026-11-26 — Security review of Phase 1 · branch `ccr-5ac9a7bd-5ahjj9`
+- **What now works:** a shared tablet's PIN session stays confined to reading itself and signing
+  out however its cookie header is written, and its cookie alone is useless off the tablet (it
+  could list the user's other sessions with their tokens, rename the account and read every
+  member's email). Nobody receives a member's PIN hash from Better Auth's member reads any more
+  (every member, staff and kitchen included, used to get everyone's).
+- **Commits:** `63d2cb9` (F1, bridge asks Better Auth whenever a Cookie header is present),
+  `3a225db` (F2, PIN columns no longer declared to Better Auth), `31216e0` (the report) plus the
+  docs commit.
+- **Review:** database isolation as `app_runtime` and `app_worker` (tenant B or none) against
+  every item in the session prompt; auth (enumeration, fields, Origin, two-factor, limits);
+  authorisation (default deny, cross-organisation IDs and Better Auth organisation endpoints, PIN
+  sessions, admin TOTP freshness). What held, what is open (M1, M2, L1–L7, §10) and the exact
+  requests with real outputs are in `docs/SECURITY_REVIEW_P1.md`. Fixture rows deleted.
+- **Tests:** API integration 120 → 121 (new PIN-cookie test; the members test now also reads
+  Better Auth's `list-members` and `get-active-member`). Both failed before their fix. No test was
+  weakened.
+- **CI:** green on `31216e0`: [CI 78](https://github.com/assemabdelmalak/demo/actions/runs/45838997014)
+  (all ten jobs, including `test-int` on PostgreSQL 17 and `e2e-smoke`) and
+  [Docker 47](https://github.com/assemabdelmalak/demo/actions/runs/45838996851). The phase branch
+  was fast-forwarded to this work.
+- **Session:** https://claude.ai/code/session_01YNpMivNJKtXxAGFScKWo5o
 
 ### 2026-11-26 — P1-T08 seed "Beit Tayta" · branch `ccr-4a469ea9-ynf5ub`
 - **What now works:** `pnpm db:seed` creates the demo restaurant of SEED_DATA: Beit Tayta SAL on
