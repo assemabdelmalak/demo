@@ -416,7 +416,8 @@ Newest first. Each session adds one entry: date, task, branch and head, result, 
   the review report, this file, PROGRESS).
 - **Tests:** api unit 104 → 107, api integration 121 → 124 (codes per address; the pause; fail
   closed). All three failed against the previous bridge and pass now.
-- **CI:** see the PROGRESS row (runs on the docs head).
+- **CI:** green on `224fcac` (code and docs): [CI 82](https://github.com/assemabdelmalak/demo/actions/runs/45850349732), [Docker 51](https://github.com/assemabdelmalak/demo/actions/runs/45850349776). The phase branch was
+  fast-forwarded to this work.
 - **Session:** https://claude.ai/code/session_01YNpMivNJKtXxAGFScKWo5o
 
 ### 2026-11-26 — Security review of Phase 1 · branch `ccr-5ac9a7bd-5ahjj9`
