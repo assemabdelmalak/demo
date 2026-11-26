@@ -48,7 +48,7 @@ together and see a per-person tab; restaurants import menus with AI, confirm all
 | Phase | Name | State |
 |---|---|---|
 | P0 | Foundation | ✅ merged to `master` ([PR #1](https://github.com/assemabdelmalak/demo/pull/1)), owner sign-off 2026-11-10 |
-| **P1** | **Data model, auth, tenancy** | **🟨 in progress** (T01–T08 and the security review done; docs + PR left) |
+| **P1** | **Data model, auth, tenancy** | **🟨 complete, waiting for the owner's review** ([PR #2](https://github.com/assemabdelmalak/demo/pull/2), Demo checkpoint P1) |
 | P2 | Restaurant setup and menu management (console) | ⬜ |
 | P3 | Diner menu PWA | ⬜ |
 | P4 | Table sessions and group ordering | ⬜ |
@@ -69,20 +69,20 @@ The owner approved the plan in `docs/plans/phase-01-plan.md` on 2026-11-11; its 
 | P1-T01 Drizzle setup | ✅ CI green | `packages/db` |
 | P1-T02 Full schema | ✅ CI green | 52 tables; ADR-022 |
 | P1-T03 Roles and RLS | ✅ CI green (CI 41, Docker 23) | ADR-021; tenancy suite `packages/db/src/rls.int.test.ts` |
-| P1-T04 Better Auth (.a server, .b console, .c orgs + invites) | ✅ CI green | ADR text not written yet (§9) |
-| P1-T05 Authorisation layer | ✅ CI green ([CI 52](https://github.com/assemabdelmalak/demo/actions/runs/43926461166)) | ADR text not written yet (§9) |
+| P1-T04 Better Auth (.a server, .b console, .c orgs + invites) | ✅ CI green | ADR-023, ADR-029, ADR-030 |
+| P1-T05 Authorisation layer | ✅ CI green ([CI 52](https://github.com/assemabdelmalak/demo/actions/runs/43926461166)) | ADR-024, ADR-025 |
 | P1-T06 Super admin, staff devices, PIN | ✅ CI green ([CI 62](https://github.com/assemabdelmalak/demo/actions/runs/45254520210), [Docker 34](https://github.com/assemabdelmalak/demo/actions/runs/45254520229)) | Done 2026-11-23, see §12 |
 | P1-T07 Audit and outbox | ✅ CI green ([CI 68](https://github.com/assemabdelmalak/demo/actions/runs/45630173651), [Docker 38](https://github.com/assemabdelmalak/demo/actions/runs/45630173552)) | Done 2026-11-25, see §12 |
 | P1-T08 Seed Beit Tayta | ✅ CI green ([CI 72](https://github.com/assemabdelmalak/demo/actions/runs/45739297307), [Docker 42](https://github.com/assemabdelmalak/demo/actions/runs/45739297263)) | Done 2026-11-26, see §12; ADR-033 |
 | Security review of Phase 1 | ✅ CI green ([CI 78](https://github.com/assemabdelmalak/demo/actions/runs/45838997014), [Docker 47](https://github.com/assemabdelmalak/demo/actions/runs/45838996851)) | Done 2026-11-26, see §12; report `docs/SECURITY_REVIEW_P1.md` |
-| Docs pass, Phase 1 PR, demo checkpoint | ⬜ **next** | Stops for the owner's review |
+| Docs pass, Phase 1 PR, demo checkpoint | ✅ CI green ([CI 86](https://github.com/assemabdelmalak/demo/actions/runs/45855051505), [Docker 55](https://github.com/assemabdelmalak/demo/actions/runs/45855051560)) | Done 2026-11-26, see §12; [PR #2](https://github.com/assemabdelmalak/demo/pull/2) waits for the owner |
 
-**Last verified numbers (2026-11-26, after the per-address limits):** lint, typecheck, format and
-build pass. Unit tests: shared 524, api 107, config 62, console 50, ui 46, db 32, mail 10,
-worker 9, diner 6, api-client 2. Integration: api 124, db 52, worker 14, config 2 of 4 (the other
-2 assert PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16 by design; green in CI).
-Playwright: 57 passed (en + ar) after P1-T08; not re-run locally after the review (API-only
-changes), CI's e2e-smoke is green on it.
+**Last verified numbers (2026-11-26, Phase 1 docs pass, head of the phase branch):** lint,
+typecheck, format and build pass. Unit tests: 848 (shared 524, api 107, config 62, console 50,
+ui 46, db 32, mail 10, worker 9, diner 6, api-client 2). Integration: api 124, db 52, worker 14,
+config 2 of 4 (the other 2 assert PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16
+by design; green in CI). Playwright: 57 passed (en + ar, full stack, seeded twice). The seed's
+second run wrote 0 rows. CI and Docker green on the docs head (all four images under 250 MB).
 
 ---
 
@@ -90,12 +90,16 @@ changes), CI's e2e-smoke is green on it.
 
 Each has a detailed prompt in `docs/sessions/`; the universal prompt in §0 also works.
 
-1. **Docs pass, Phase 1 PR, demo checkpoint** — `docs/sessions/05-docs-and-pr.md`. Stops and
-   waits for the owner. The PR's demo steps can now use the seeded accounts. Link
-   `docs/SECURITY_REVIEW_P1.md` in the PR body and list its open items (L1–L7; F1, F2, M1 and M2
-   are fixed).
-2. **Phase 2 plan** — start in plan mode: summarise the phase goal, list P2-T01…T11 and the files
-   to touch, list open questions, wait for approval (CLAUDE §2.2). Then one task per session.
+**Waiting for the owner:** [PR #2](https://github.com/assemabdelmalak/demo/pull/2) is the Demo checkpoint P1 (CLAUDE §2.5). If the owner asks for
+changes to Phase 1, those changes are the next task, on `phase/01-data-auth-tenancy`, before
+anything below.
+
+1. **Phase 2 plan: start in plan mode** — `docs/sessions/06-phase-2-plan.md`. Create the Phase 2
+   branch (§4), summarise the phase goal and Demo checkpoint P2, list P2-T01…T11 with the files to
+   touch and the sub-task splits, list open questions with recommended defaults, write
+   `docs/plans/phase-02-plan.md` and wait for approval (CLAUDE §2.2). No code.
+2. **P2-T01 Restaurant settings** — the first Phase 2 task once the plan is approved; it settles
+   the shadcn/ui question first (ADR-020). Then one task per session, in plan order.
 
 After Phase 1 the queue is the plan itself, task by task (titles from `IMPLEMENTATION_PLAN.md`):
 
@@ -126,8 +130,11 @@ demo checkpoint (CLAUDE §2.5).
 
 ## 4. Branches and sessions
 
-- **Phase branch (the shared truth):** `phase/01-data-auth-tenancy`. The Phase 1 PR goes from it
-  to `master`.
+- **Phase branch (the shared truth):** `phase/02-restaurant-menu` for Phase 2, created by the Phase 2
+  plan session (from `origin/master` if PR #2 is merged, otherwise from
+  `origin/phase/01-data-auth-tenancy`). Its PR goes to `master` at the end of Phase 2.
+  `phase/01-data-auth-tenancy` stays open for PR #2 only: changes the owner asks for in the
+  Phase 1 review go there.
 - **Session branches:** every cloud session is given its own branch named `claude/<words>` and
   may only push there unless the owner's prompt allows the phase branch too (§0).
 - **At the start of a session,** find the newest work. The session log (§12) names the branch
@@ -135,17 +142,18 @@ demo checkpoint (CLAUDE §2.5).
 
   ```bash
   git fetch origin
-  git log --oneline origin/phase/01-data-auth-tenancy..origin/<last-session-branch>   # unmerged work
+  git log --oneline origin/<phase-branch>..origin/<last-session-branch>   # unmerged work
   ```
 
   Start your session branch from the newest of the two (`git checkout -B <your-branch> origin/<newest>`).
 - **At the end of a session,** push your session branch. If you are allowed to push the phase
-  branch, fast-forward it to your work (`git push origin HEAD:phase/01-data-auth-tenancy`; never
+  branch, fast-forward it to your work (`git push origin HEAD:<phase-branch>`; never
   force). If not, say in your report that the phase branch needs fast-forwarding, and record your
   branch in §12.
-- **Right now:** nothing pending. The security review was done on `ccr-5ac9a7bd-5ahjj9` and the
-  phase branch was fast-forwarded to it (the owner's prompt allowed it), so start from
-  `origin/phase/01-data-auth-tenancy`.
+- **Right now:** nothing pending. The Phase 1 docs pass was done on `ccr-a326ee4c-joutzo` and
+  `phase/01-data-auth-tenancy` was fast-forwarded to it (the owner's prompt allowed it); PR #2
+  goes from there to `master`. `phase/02-restaurant-menu` does not exist yet: the Phase 2 plan
+  session creates it as above.
 
 ---
 
@@ -253,7 +261,7 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 | Project rules | `CLAUDE.md` |
 | Tasks and acceptance criteria | `docs/IMPLEMENTATION_PLAN.md` |
 | Approved Phase 1 plan and design decisions | `docs/plans/phase-01-plan.md` |
-| Decisions made so far | `docs/DECISIONS.md` (ADR-001…022, 028, 031, 033 and 034 written; 023…027, 029, 030 and 032 pending, §9) |
+| Decisions made so far | `docs/DECISIONS.md` (ADR-001 to ADR-034, all written) |
 | Detailed per-task log, "Needs owner" | `docs/PROGRESS.md` |
 | Database: schema, migrations, RLS, tenant helpers, test DB | `packages/db/src/schema/*`, `packages/db/drizzle/*`, `packages/db/sql/bootstrap-roles.sql`, `packages/db/src/tenant.ts`, `packages/db/src/testing/*` |
 | Auth server (Better Auth bridge, sessions, PIN-session gate) | `apps/api/src/auth/*` |
@@ -269,50 +277,16 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 | Demo seed (Beit Tayta) | `packages/db/src/seed/*` (`data.ts` is SEED_DATA as code; `run.ts` writes it; `main.ts` is `pnpm db:seed`), export `@radd/db/seed` |
 | Browser tests | `e2e/*.spec.ts` (shared console helpers in `e2e/console-helpers.ts`; seeded roles in `console.roles.spec.ts`), `playwright.config.ts` |
 | Phase 1 security review (findings, requests, real outputs) | `docs/SECURITY_REVIEW_P1.md` |
+| Phase 1 demo screens (en, ar) | `docs/demo/phase-01/` |
+| Per-session prompts | `docs/sessions/` (06 is the Phase 2 plan) |
 | Agent setup without Docker | `infra/scripts/agent-env.sh`, `infra/scripts/agent-services.sh`, `infra/scripts/mail-catcher.mjs` |
 
-## 9. Docs debt (session "Docs pass" clears it; earlier if you touch the area)
+## 9. Docs debt (clear it in the task that touches the area)
 
-- `docs/PROGRESS.md`: rows for P1-T03 (mark ✅, CI 41 / Docker 23), P1-T04.a/.b/.c and P1-T05
-  (CI 52 / Docker 31). P1-T06 has its row.
-- `docs/DECISIONS.md`: write ADR-023 to ADR-027, ADR-029 and ADR-030 from
-  `docs/plans/phase-01-plan.md`, as built (ADR-028 outbox and ADR-031 audit were written in
-  P1-T07):
-  - ADR-023: Better Auth responses keep their JSON shape under `/v1/auth/*`; malformed IDs give
-    400 `INVALID_ID`; link-based reset and verification, social sign-in and emailed two-factor
-    codes are disabled; `verify-email` cannot sign in a verified or two-factor account; the Origin
-    check stays on in tests; the rate limiter fails closed.
-  - ADR-025: the final action list and matrix (`packages/shared/src/permissions.ts`); staff may
-    "86" an item and reopen a `bill_requested` session; a PIN session never reaches the `org`,
-    `team`, `devices` or `account` namespaces.
-  - ADR-026 as built: device cookie `__Host-radd_device` over HTTPS (Path=/), `radd_device` with
-    Path=/v1 over HTTP; host-only, HttpOnly, SameSite=Lax, one year; an Idempotency-Key replay of
-    registration never sets a second cookie. PINs 4–6 digits, weak patterns refused (`isWeakPin`).
-    Lockout keys include a fingerprint of the PIN hash, so a manager's new PIN clears lock and
-    daily count. 30 switch attempts per device per minute. The switch signs out whoever used the
-    tablet before. A PIN session without the device cookie is ignored for that request (not
-    ended: the console server renders with the session cookie alone); one older than 12 hours,
-    with no device, or with a revoked device is ended. Under `/v1/auth/*` it may call only
-    `get-session` (never refreshed) and `sign-out`; the bridge applies this whenever a request
-    carries any Cookie header, using Better Auth's own reading of the session (security review
-    F1). `pin_hash` and `pin_disabled_at` are not declared to Better Auth at all (F2).
-  - ADR-027 as built: `isSuperAdmin` on `/v1/me` uses the same verdict as the guard; the admin
-    pool (`app_admin`, max 4 connections, application name `radd-api-admin`) lives in
-    `AdminModule` only; Bull Board refuses changes whose `Origin` is not the API's own, and every
-    successful change goes to the audit seam with no organisation.
-  - ADR-029: codes are sent by the API directly, invitations through `notify.email`; new package
-    `packages/mail`; invitations last 7 days.
-  - New ADR (next free number, ADR-032): `.pnpmfile.cjs` (Better Auth's framework peers;
-    valibot's TypeScript peer).
-- `docs/API.md` §2, §4 and §5: `/v1/auth/*` exception, `x-radd-locale` header, `GET /v1/me`
-  (with `isSuperAdmin`), organisation, invitation, restaurant, staff-device, member-PIN, switch
-  and admin endpoints; error codes `EMAIL_NOT_VERIFIED`, `NOT_A_MEMBER`, `ORG_SUSPENDED`,
-  `ORG_LIMIT_REACHED`, `ALREADY_A_MEMBER`, `TWO_FACTOR_REQUIRED`, `DEVICE_REVOKED`, `PIN_LOCKED`,
-  and Better Auth's `PIN_SESSION_FORBIDDEN` under `/v1/auth/*`.
-- `IMPLEMENTATION_PLAN.md` P1-T06 says the device cookie is on "the console origin": it is on the
-  API host (ADR-026, corrected by the approved plan).
-- `CLAUDE.md` §5 repository layout: add `packages/mail`. (`DEPLOYMENT.md` now names
-  `DATABASE_URL_WORKER` for the worker and `DATABASE_URL_ADMIN` for the API, done in P1-T07.)
+- None. The Phase 1 docs pass (2026-11-26) wrote ADR-023 to ADR-027, ADR-029, ADR-030 and
+  ADR-032, the missing PROGRESS rows, and the API.md, ARCHITECTURE, DATA_MODEL, DEPLOYMENT,
+  IMPLEMENTATION_PLAN, CLAUDE §5 and OWNER_CHECKLIST corrections. Add here anything a session
+  leaves undone.
 
 ## 10. Known risks, not yet addressed
 
@@ -384,11 +358,20 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
   - **L7:** the cluster's `postgres` database keeps `PUBLIC` connect and temp rights (no data);
     revoke them in the cluster half of `bootstrap-roles.sql`.
 
+- **New in the Phase 1 docs pass:**
+  - Better Auth mounts more endpoints than the console uses (API.md §2 lists them:
+    `list-accounts`, `update-session`, `verify-password`, the organisation reads and others). They
+    are read-only or limited to the caller's own account and were part of the security review,
+    but a later hardening pass (P10-T01 at the latest) could disable the ones never needed.
+  - `docs/demo/phase-NN/` holds review screenshots in the repository (about 0.7 MB per phase).
+
 ## 11. Owner: what only you can do
 
 The full list with explanations is "Needs owner" in `docs/PROGRESS.md`; the per-phase test
 scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
 
+- **Review the Phase 1 demo checkpoint ([PR #2](https://github.com/assemabdelmalak/demo/pull/2)).** Try the demo steps in the PR or look at the
+  screens in `docs/demo/phase-01/`, then say "merge" or what to change. Phase 2 waits for it.
 - **Seed decisions (ADR-033), say if you want them changed:** the side (fries, salad) and sugar
   options are seeded with their allergen impact **not confirmed** (SEED_DATA confirms only the
   protein and bread options), so diners will see "allergen impact not confirmed" on them; the local
@@ -405,6 +388,29 @@ scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
 ## 12. Session log
 
 Newest first. Each session adds one entry: date, task, branch and head, result, CI, notes.
+
+### 2026-11-26 — Phase 1 docs pass, acceptance audit, PR #2 · branch `ccr-a326ee4c-joutzo`
+- **What now works:** nothing new in the product; Phase 1 is finished and documented as built, and
+  [PR #2](https://github.com/assemabdelmalak/demo/pull/2) (Demo checkpoint P1) waits for the owner.
+- **Docs:** ADR-023 (Better Auth), ADR-024 (request model), ADR-025 (permissions), ADR-026 (staff
+  devices and PINs), ADR-027 (super admin), ADR-029 (auth emails), ADR-030 (console auth pages),
+  ADR-032 (`.pnpmfile.cjs`), each written from the code. API.md §2 now lists exactly which Better
+  Auth endpoints are mounted (checked against the running config) and §4/§5 mark the built
+  routes with their rules and error codes. ARCHITECTURE, DATA_MODEL (`pin_disabled_at`),
+  DEPLOYMENT (auth variables, cookie prefix, rotating `BETTER_AUTH_SECRET`), the plan's P1
+  wording, CLAUDE §5 (`packages/mail`) and OWNER_CHECKLIST (one-task prompt, local P1 script)
+  corrected. PROGRESS rows for T03 (✅), T04.a–c and T05 with CI links.
+- **Audit:** all 77 "Do", "Accept" and "Test" bullets of P1-T01 to T08 checked against the code:
+  all met; 5 met differently with a recorded decision (ADR-021, 023, 024, 026, 028); 2 deferred
+  with a reason (seed publish → P2-T08, photos → P2-T02, ADR-033). Nothing needed fixing.
+- **Commits:** `b334467` (ADRs), `ed8142d` (API.md), `22c55fc` (other specs), `a21ce93` (demo
+  screens), `020eee1` (Phase 2 session prompt) plus the docs commit.
+- **Tests:** no code changed. All gates, integration (190 green, 2 expected local failures) and
+  the full Playwright suite (57) pass locally; seeding twice wrote 0 rows the second time.
+- **CI:** green on `22c55fc`: [CI 86](https://github.com/assemabdelmalak/demo/actions/runs/45855051505)
+  and [Docker 55](https://github.com/assemabdelmalak/demo/actions/runs/45855051560) (four images
+  under 250 MB, non-root, healthy). The phase branch was fast-forwarded to this work.
+- **Session:** https://claude.ai/code/session_01YNpMitNWR3sRGk8wJDXNmF
 
 ### 2026-11-26 — Per-address sign-in limits (review M1, M2) · branch `ccr-5ac9a7bd-5ahjj9`
 - **What now works:** one address gets at most 5 code emails an hour, whichever IPs ask; 10 wrong
