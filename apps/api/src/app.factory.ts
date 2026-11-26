@@ -11,6 +11,7 @@ import { QUEUE_NAMES } from '@radd/shared';
 import { registerBullBoard } from './admin/bull-board';
 import { type AppModuleOptions, AppModule } from './app.module';
 import { AuditService } from './audit/audit.service';
+import { SignInLockout } from './auth/address-limits';
 import { type AuthRateLimitStorage } from './auth/auth-rate-limit';
 import { type Auth } from './auth/auth.config';
 import { registerAuth } from './auth/auth.fastify';
@@ -69,9 +70,11 @@ export async function createApp(
 
   // After the client-IP hook: the auth bridge forwards `request.clientIp`, and its session hook
   // must set `request.principal` before the global throttler guard reads it (ADR-016).
+  const authOptions = app.get<Required<AuthModuleOptions>>(AUTH_OPTIONS);
   await registerAuth(fastify, app.get<Auth>(AUTH), env, {
     limiter: app.get<AuthRateLimitStorage>(AUTH_RATE_LIMITER),
-    codeRequestLimit: app.get<Required<AuthModuleOptions>>(AUTH_OPTIONS).codeRequestLimit,
+    codeRequestLimit: authOptions.codeRequestLimit,
+    signInLockout: authOptions.signInLockout ? app.get(SignInLockout) : undefined,
     logger: new NestLogger('AuthBridge'),
     pinSessions: app.get(PinSessionGate),
   });

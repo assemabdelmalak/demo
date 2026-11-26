@@ -657,6 +657,85 @@ describe.skipIf(!runtime.ready)('auth (Better Auth at /v1/auth)', () => {
       }
     });
 
+    // ADR-034 (security review of Phase 1, M1): from 12 IPs, 12 codes reached one inbox.
+    it('sends one address at most 5 codes an hour, whatever the IP', async () => {
+      const limited = await boot(services, mailer, {
+        auth: { rateLimit: false, codeRequestLimit: true },
+      });
+      try {
+        const { email } = await verifiedUser('address-codes');
+        const delivered = async () => {
+          await latestCode(limited, mailer, email);
+          return mailer.sent.filter((mail) => mail.to === email).length;
+        };
+        const before = await delivered();
+        const request = (address: string, i: number) =>
+          new TestBrowser(limited, { origin: CONSOLE, ip: randomIp() }).post(
+            i % 2 === 0
+              ? '/v1/auth/email-otp/send-verification-otp'
+              : '/v1/auth/email-otp/request-password-reset',
+            { email: address, type: 'sign-in' },
+          );
+        // Case and spacing do not open a second bucket (the sixth is the spaced spelling).
+        const spellings = [email, email.toUpperCase(), email, email, email];
+        for (const [i, spelling] of spellings.entries()) {
+          expect((await request(spelling, i)).statusCode, `code ${String(i + 1)}`).toBe(200);
+        }
+        const sixth = await request(` ${email.toUpperCase()} `, 5);
+        expect(sixth.statusCode).toBe(429);
+        expect(Number(sixth.headers['retry-after'])).toBeGreaterThan(3000);
+        expect(sixth.json()).toEqual({ message: 'Too many requests. Please try again later.' });
+        expect((await delivered()) - before).toBe(5);
+
+        // An address without an account is capped the same way, so the cap reveals nothing.
+        const nobody = uniqueEmail('address-codes-nobody');
+        for (let i = 0; i < 5; i += 1) expect((await request(nobody, i)).statusCode).toBe(200);
+        const refused = await request(nobody, 5);
+        expect(refused.statusCode).toBe(429);
+        expect(refused.json()).toEqual(sixth.json());
+        // Other addresses are untouched.
+        expect((await request(uniqueEmail('address-codes-other'), 0)).statusCode).toBe(200);
+      } finally {
+        await limited.close();
+      }
+    });
+
+    // ADR-034 (security review of Phase 1, M2): 15 wrong passwords from 15 IPs were never slowed.
+    it('pauses password sign-in for an address after 10 wrong passwords, whatever the IP', async () => {
+      const { email } = await verifiedUser('lockout');
+      const signIn = (address: string, password: string) =>
+        new TestBrowser(app, { origin: CONSOLE, ip: randomIp() }).post('/v1/auth/sign-in/email', {
+          email: address,
+          password,
+        });
+
+      // A correct password clears the count: 9 wrong, right, 9 wrong is never paused.
+      for (let i = 0; i < 9; i += 1)
+        expect((await signIn(email, `wrong ${String(i)}`)).statusCode).toBe(401);
+      expect((await signIn(email, PASSWORD)).statusCode).toBe(200);
+      for (let i = 0; i < 9; i += 1)
+        expect((await signIn(email, `wrong ${String(i)}`)).statusCode).toBe(401);
+      // The 10th failure in a row starts the pause; then even the right password is refused.
+      expect((await signIn(email.toUpperCase(), 'wrong again')).statusCode).toBe(401);
+      const paused = await signIn(email, PASSWORD);
+      expect(paused.statusCode).toBe(429);
+      expect(Number(paused.headers['retry-after'])).toBeGreaterThan(800);
+      expect(paused.json()).toEqual({ message: 'Too many requests. Please try again later.' });
+      expect(paused.headers['set-cookie']).toBeUndefined();
+
+      // An address without an account pauses the same way, so the pause reveals nothing.
+      const nobody = uniqueEmail('lockout-nobody');
+      for (let i = 0; i < 10; i += 1)
+        expect((await signIn(nobody, `wrong ${String(i)}`)).statusCode).toBe(401);
+      const refused = await signIn(nobody, PASSWORD);
+      expect(refused.statusCode).toBe(429);
+      expect(refused.json()).toEqual(paused.json());
+
+      // Other accounts sign in as usual.
+      const other = await verifiedUser('lockout-other');
+      expect((await signIn(other.email, PASSWORD)).statusCode).toBe(200);
+    });
+
     it('fails closed when Valkey is unreachable', async () => {
       const limited = await boot(services, mailer, {
         auth: { rateLimit: true, codeRequestLimit: true },
@@ -674,6 +753,22 @@ describe.skipIf(!runtime.ready)('auth (Better Auth at /v1/auth)', () => {
           type: 'sign-in',
         });
         expect(code.statusCode).toBe(429);
+      } finally {
+        await limited.close();
+      }
+    });
+
+    it('refuses password sign-in when the per-address pause cannot be checked', async () => {
+      // Better Auth's own limiter off, so the refusal can only come from the pause (ADR-034).
+      const limited = await boot(services, mailer, {
+        auth: { rateLimit: false, codeRequestLimit: false },
+      });
+      try {
+        const { email } = await verifiedUser('lockout-closed');
+        limited.get<Redis>(VALKEY).disconnect();
+        const client = new TestBrowser(limited, { origin: CONSOLE, ip: randomIp() });
+        const signIn = await client.post('/v1/auth/sign-in/email', { email, password: PASSWORD });
+        expect(signIn.statusCode).toBe(429);
       } finally {
         await limited.close();
       }

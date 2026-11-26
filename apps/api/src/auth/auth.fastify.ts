@@ -2,6 +2,12 @@ import { type LoggerService } from '@nestjs/common';
 import { fromNodeHeaders } from 'better-auth/node';
 import { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 
+import {
+  ADDRESS_CODE_LIMIT,
+  requestAddress,
+  SIGN_IN_PATH,
+  type SignInLockout,
+} from './address-limits';
 import { type AuthRateLimitStorage } from './auth-rate-limit';
 import { type AuthSession } from './auth-session';
 import { type Auth } from './auth.config';
@@ -26,8 +32,10 @@ const BODY_FRAMING_HEADERS = ['content-length', 'transfer-encoding'] as const;
 
 export interface RegisterAuthDeps {
   limiter: AuthRateLimitStorage;
-  /** The extra per-IP cap on code emails; on unless a test turns it off. */
+  /** The extra caps on code emails, per IP and per address (ADR-034); on unless a test turns them off. */
   codeRequestLimit: boolean;
+  /** The per-address pause after wrong passwords (ADR-034); undefined when a test turns it off. */
+  signInLockout: SignInLockout | undefined;
   logger: LoggerService;
   /** Confines shared-tablet PIN sessions to their device (ADR-026). */
   pinSessions: PinSessionGate;
@@ -111,7 +119,7 @@ export async function registerAuth(
   fastify: FastifyInstance,
   auth: Auth,
   env: ApiEnv,
-  { limiter, codeRequestLimit, logger, pinSessions }: RegisterAuthDeps,
+  { limiter, codeRequestLimit, signInLockout, logger, pinSessions }: RegisterAuthDeps,
 ): Promise<void> {
   const { origin, basePath } = authUrlParts(env.BETTER_AUTH_URL);
   const typeBase = problemTypeBase(env.APP_DOMAIN);
@@ -144,17 +152,32 @@ export async function registerAuth(
     handler: async (request, reply) => {
       try {
         const path = authRelativePath(request.url, basePath);
+        const tooMany = (retryAfter: number) =>
+          reply.status(429).header('retry-after', String(retryAfter)).send(TOO_MANY_REQUESTS);
+        const address = request.method === 'POST' ? requestAddress(request.body) : undefined;
         if (codeRequestLimit && request.method === 'POST' && CODE_REQUEST_PATHS.has(path)) {
           const { allowed, retryAfter } = await limiter.consume(
             `codes|${request.clientIp ?? request.ip}`,
             CODE_REQUEST_LIMIT,
           );
-          if (!allowed) {
-            return await reply
-              .status(429)
-              .header('retry-after', String(retryAfter ?? CODE_REQUEST_LIMIT.window))
-              .send(TOO_MANY_REQUESTS);
+          if (!allowed) return await tooMany(retryAfter ?? CODE_REQUEST_LIMIT.window);
+          if (address) {
+            const perAddress = await limiter.consume(
+              `codes-address|${address}`,
+              ADDRESS_CODE_LIMIT,
+            );
+            if (!perAddress.allowed) {
+              return await tooMany(perAddress.retryAfter ?? ADDRESS_CODE_LIMIT.window);
+            }
           }
+        }
+        // While paused, even the right password is refused: otherwise a 200 among the 429s
+        // would still tell a guesser they had found it.
+        const lockedAddress =
+          signInLockout && request.method === 'POST' && path === SIGN_IN_PATH ? address : undefined;
+        if (signInLockout && lockedAddress) {
+          const verdict = await signInLockout.check(lockedAddress);
+          if (verdict.locked) return await tooMany(verdict.retryAfter ?? 1);
         }
 
         const url = new URL(request.url, origin);
@@ -185,6 +208,9 @@ export async function registerAuth(
             body: requestBody(request),
           }),
         );
+        if (signInLockout && lockedAddress) {
+          await signInLockout.record(lockedAddress, response.status);
+        }
         return await forward(reply, response);
       } catch (error) {
         logger.error(

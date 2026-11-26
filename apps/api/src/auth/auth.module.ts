@@ -10,6 +10,7 @@ import { type Redis } from 'ioredis';
 import { type DbHandle } from '@radd/db';
 import { type Mailer } from '@radd/mail';
 
+import { SignInLockout } from './address-limits';
 import { AuthMailer } from './auth-mailer';
 import { type AuthRateLimitStorage, createValkeyRateLimitStorage } from './auth-rate-limit';
 import { createAuth } from './auth.config';
@@ -32,8 +33,10 @@ export const AUTH_OPTIONS = Symbol('AUTH_OPTIONS');
 export interface AuthModuleOptions {
   /** Better Auth's limiter. Tests turn it off, or its 3-per-10-seconds sign-in rule trips them. */
   rateLimit?: boolean;
-  /** The 10-per-15-minutes cap on code emails per client IP. */
+  /** The caps on code emails: 10 per 15 minutes per client IP, 5 an hour per address (ADR-034). */
   codeRequestLimit?: boolean;
+  /** The 15-minute pause on an address after 10 wrong passwords (ADR-034). */
+  signInLockout?: boolean;
 }
 
 @Module({})
@@ -44,6 +47,7 @@ export class AuthModule implements BeforeApplicationShutdown {
     const resolved: Required<AuthModuleOptions> = {
       rateLimit: options.rateLimit ?? true,
       codeRequestLimit: options.codeRequestLimit ?? true,
+      signInLockout: options.signInLockout ?? true,
     };
     return {
       module: AuthModule,
@@ -75,6 +79,12 @@ export class AuthModule implements BeforeApplicationShutdown {
             ),
         },
         {
+          provide: SignInLockout,
+          inject: [API_ENV, VALKEY],
+          useFactory: (env: ApiEnv, valkey: Redis) =>
+            new SignInLockout(valkey, env.ACTOR_HASH_SECRET, new Logger('SignInLockout')),
+        },
+        {
           provide: AUTH,
           inject: [API_ENV, DB, AuthMailer, VALKEY, QueueProducer],
           useFactory: (
@@ -95,7 +105,7 @@ export class AuthModule implements BeforeApplicationShutdown {
             }),
         },
       ],
-      exports: [AUTH, AUTH_RATE_LIMITER, AUTH_OPTIONS, AuthMailer, PinSessionGate],
+      exports: [AUTH, AUTH_RATE_LIMITER, AUTH_OPTIONS, AuthMailer, PinSessionGate, SignInLockout],
     };
   }
 
