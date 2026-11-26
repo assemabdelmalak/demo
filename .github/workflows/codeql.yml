@@ -37,3 +37,13 @@ jobs:
       - uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           category: /language:javascript-typescript
+      # Agent sessions cannot read code-scanning alerts through the API, only job logs, so a red
+      # CodeQL check could not be acted on. List every result (rule, level, place, message) here.
+      - name: List results in the log
+        if: always()
+        run: |
+          for f in ../results/*.sarif; do
+            [ -f "$f" ] || continue
+            jq -r '.runs[].results[]
+              | "\(.ruleId) [\(.level // "warning")] \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine) \(.message.text | gsub("\n"; " "))"' "$f"
+          done
