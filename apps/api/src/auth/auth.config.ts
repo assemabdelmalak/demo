@@ -409,9 +409,11 @@ export function createAuth({
             },
           },
           member: {
+            // `pin_hash` and `pin_disabled_at` are deliberately not declared: Better Auth's member
+            // reads (`list-members`, `get-active-member`) ignore `returned: false` and handed every
+            // member's PIN hash to the whole organisation (security review of Phase 1). Only our own
+            // queries in packages/db read or write them, so Better Auth must not know they exist.
             additionalFields: {
-              pinHash: { type: 'string', required: false, input: false, returned: false },
-              pinDisabledAt: { type: 'date', required: false, input: false, returned: false },
               displayName: { type: 'string', required: false, input: false },
             },
           },

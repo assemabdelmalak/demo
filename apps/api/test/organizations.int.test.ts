@@ -315,6 +315,17 @@ describe.skipIf(!runtime.ready)('organisations, members and invitations', () => 
       const full = await t.staff.client.get('/v1/auth/organization/get-full-organization');
       expect(full.statusCode).toBe(200);
       expect(full.body).not.toContain('secret-pin-hash');
+      // Security review of Phase 1: these two returned every member's hash, `returned: false`
+      // notwithstanding, to staff and kitchen as well.
+      for (const [client, path] of [
+        [t.kitchen.client, '/v1/auth/organization/list-members'],
+        [t.staff.client, '/v1/auth/organization/get-active-member'],
+      ] as const) {
+        const read = await client.get(path);
+        expect(read.statusCode, path).toBe(200);
+        expect(read.body, path).not.toContain('secret-pin-hash');
+        expect(read.body, path).not.toMatch(/pinHash|pinDisabledAt/);
+      }
 
       const page1 = (await t.owner.client.get('/v1/organizations/current/members?limit=3')).json<{
         items: { id: string }[];
