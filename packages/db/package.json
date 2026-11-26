@@ -24,6 +24,11 @@
       "@radd/source": "./src/testing/index.ts",
       "types": "./dist/testing/index.d.ts",
       "default": "./dist/testing/index.js"
+    },
+    "./seed": {
+      "@radd/source": "./src/seed/index.ts",
+      "types": "./dist/seed/index.d.ts",
+      "default": "./dist/seed/index.js"
     }
   },
   "files": [
@@ -52,6 +57,7 @@
     "@radd/config": "workspace:*",
     "@types/node": "24.19.2",
     "@types/pg": "8.15.6",
+    "better-auth": "1.7.18",
     "drizzle-kit": "0.31.11",
     "eslint": "10.13.0",
     "typescript": "5.9.3",
