@@ -14,7 +14,8 @@ Every prompt starts by reading `docs/HANDOFF.md`, which holds the current state,
 commands, the rules and a log of every session. The session updates that file before it finishes,
 so the next session starts from the truth.
 
-Order: `01` (done) → `02` → `03` → `04` → `05`. Do not skip: later tasks build on earlier ones.
+Order: `01` to `05` (Phase 1, done) → `06` (Phase 2 plan). Do not skip: later tasks build on earlier ones.
+From Phase 2 on, the queue is the plan itself (`docs/HANDOFF.md` §3); the universal prompt is enough.
 
 Each prompt allows the session to push to the phase branch. Cloud sessions are otherwise limited
 to their own `claude/…` branch, and their work would not reach the phase branch by itself
