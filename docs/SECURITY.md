@@ -12,7 +12,7 @@ Baseline is OWASP ASVS L1 for the whole system, with L2 for authentication, sess
 | T4 | IDOR on session items, payments, receipts | High | Every handler loads the entity scoped by `session_id` + `restaurant_id` from the token or membership; receipts use signed, expiring tokens |
 | T5 | Prompt injection / jailbreak of the assistant | Medium | Strict policy, read-only tools, no secrets in context, output guard, allergen templates, logging, evals |
 | T6 | Allergen misinformation | Severe | ALLERGEN_SAFETY.md controls |
-| T7 | Staff account takeover | High | Better Auth with rate-limited login, email OTP, optional TOTP 2FA (required for owners on paid plans and for super admin), session rotation, device-bound PIN sessions |
+| T7 | Staff account takeover | High | Better Auth with rate-limited login (per IP, and per address: a 15-minute pause after 10 wrong passwords, 5 code emails an hour; ADR-034), email OTP, optional TOTP 2FA (required for owners on paid plans and for super admin), session rotation, device-bound PIN sessions |
 | T8 | Payment record tampering / fraud by staff | Medium | Role permissions, manager-only voids and discounts, append-only audit log, daily reconciliation report |
 | T9 | Malicious file uploads | Medium | Presigned uploads with size and type limits; magic-byte validation; image re-encoding with sharp (drops payloads); PDFs never rendered in the browser from untrusted origins; files served from a separate domain (`cdn.`) with `Content-Disposition` for non-images |
 | T10 | XSS via menu content or names | High | React escaping; no `dangerouslySetInnerHTML` (owner content is plain text; chat renders a markdown subset via a safe renderer with no HTML); strict CSP |

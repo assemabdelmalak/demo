@@ -247,7 +247,7 @@ Every route declares its access policy: a permission action from `packages/share
 | Chat | 20 / device / 10 min; 120 / session / h; org monthly quota |
 | Events ingest | 10 requests / device / min |
 | Console writes | 300 / user / min |
-| Auth (login / OTP) | Better Auth defaults plus 10 / IP / 15 min for OTP send (IP is acceptable here) |
+| Auth (login / OTP) | Better Auth defaults plus 10 / IP / 15 min for OTP send (IP is acceptable here); per address (ADR-034): 5 code emails / h, and 10 wrong passwords in a row pause password sign-in for 15 min (even the right password answers 429) |
 
 Implementation notes (ADR-016):
 - Every route shares one default bucket of 300 requests per actor per minute. Scoped limits above are named throttlers with their own keys.

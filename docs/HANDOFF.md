@@ -77,9 +77,9 @@ The owner approved the plan in `docs/plans/phase-01-plan.md` on 2026-11-11; its 
 | Security review of Phase 1 | ✅ CI green ([CI 78](https://github.com/assemabdelmalak/demo/actions/runs/45838997014), [Docker 47](https://github.com/assemabdelmalak/demo/actions/runs/45838996851)) | Done 2026-11-26, see §12; report `docs/SECURITY_REVIEW_P1.md` |
 | Docs pass, Phase 1 PR, demo checkpoint | ⬜ **next** | Stops for the owner's review |
 
-**Last verified numbers (2026-11-26, after the security review):** lint, typecheck, format and
-build pass. Unit tests: shared 524, api 104, config 62, console 50, ui 46, db 32, mail 10,
-worker 9, diner 6, api-client 2. Integration: api 121, db 52, worker 14, config 2 of 4 (the other
+**Last verified numbers (2026-11-26, after the per-address limits):** lint, typecheck, format and
+build pass. Unit tests: shared 524, api 107, config 62, console 50, ui 46, db 32, mail 10,
+worker 9, diner 6, api-client 2. Integration: api 124, db 52, worker 14, config 2 of 4 (the other
 2 assert PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16 by design; green in CI).
 Playwright: 57 passed (en + ar) after P1-T08; not re-run locally after the review (API-only
 changes), CI's e2e-smoke is green on it.
@@ -92,9 +92,8 @@ Each has a detailed prompt in `docs/sessions/`; the universal prompt in §0 also
 
 1. **Docs pass, Phase 1 PR, demo checkpoint** — `docs/sessions/05-docs-and-pr.md`. Stops and
    waits for the owner. The PR's demo steps can now use the seeded accounts. Link
-   `docs/SECURITY_REVIEW_P1.md` in the PR body and list its open items (M1, M2, L1–L7). If the
-   owner has said yes to the per-address limits (§11) before this session, they are a separate
-   small fix session first.
+   `docs/SECURITY_REVIEW_P1.md` in the PR body and list its open items (L1–L7; F1, F2, M1 and M2
+   are fixed).
 2. **Phase 2 plan** — start in plan mode: summarise the phase goal, list P2-T01…T11 and the files
    to touch, list open questions, wait for approval (CLAUDE §2.2). Then one task per session.
 
@@ -237,6 +236,10 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
   created, 0 updated" (CI checks it). A new tenant table the demo needs gets its rows in
   `rows.ts`, written through `upsertRows` inside the seed's `withTenant`. P2-T08 must make the
   seed publish and set the restaurant live; P2-T02 must add the photos.
+- **Per-address sign-in limits** (ADR-034): 10 wrong passwords in a row for one address pause its
+  password sign-in for 15 minutes, and one address gets at most 5 code emails an hour. A test that
+  fails a password more than 9 times for one address, or asks one address for more than 5 codes,
+  boots with `auth: { signInLockout: false }` or `codeRequestLimit: false`.
 - **Docs stay truthful:** a deviation from a spec is fixed in that spec and explained in
   `docs/DECISIONS.md` in the same PR.
 - **Arabic and English:** every console string in both catalogues; check RTL, 360 px, keyboard.
@@ -250,7 +253,7 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 | Project rules | `CLAUDE.md` |
 | Tasks and acceptance criteria | `docs/IMPLEMENTATION_PLAN.md` |
 | Approved Phase 1 plan and design decisions | `docs/plans/phase-01-plan.md` |
-| Decisions made so far | `docs/DECISIONS.md` (ADR-001…022, 028, 031 and 033 written; 023…027, 029, 030 and 032 pending, §9) |
+| Decisions made so far | `docs/DECISIONS.md` (ADR-001…022, 028, 031, 033 and 034 written; 023…027, 029, 030 and 032 pending, §9) |
 | Detailed per-task log, "Needs owner" | `docs/PROGRESS.md` |
 | Database: schema, migrations, RLS, tenant helpers, test DB | `packages/db/src/schema/*`, `packages/db/drizzle/*`, `packages/db/sql/bootstrap-roles.sql`, `packages/db/src/tenant.ts`, `packages/db/src/testing/*` |
 | Auth server (Better Auth bridge, sessions, PIN-session gate) | `apps/api/src/auth/*` |
@@ -363,13 +366,10 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 
 - **New in the security review** (details, requests and real outputs in
   `docs/SECURITY_REVIEW_P1.md`):
-  - **M1 (Medium):** emailed codes are limited per IP only; from many IPs anyone can send an
-    address unlimited codes (mailbox flooding, email cost) and slowly guess the sign-in code of a
-    password-only account (3 guesses per code). Fix: a per-address cap on the two code-request
-    paths in the bridge, the same for unknown addresses.
-  - **M2 (Medium):** password sign-in is limited per IP only; 15 wrong passwords from 15 IPs were
-    never slowed. Fix: a per-address failure counter with a short pause. Both wait on the owner's
-    yes (§11) because a per-address limit lets someone hold a victim's sign-in shut.
+  - **M1 and M2 are fixed** (ADR-034, approved by the owner). The accepted trade: anyone who
+    knows an address can pause its password sign-in for 15 minutes at a time (10 wrong passwords)
+    and stop its code emails for up to an hour (5 requests). Code sign-in still works while
+    passwords are paused.
   - **L1:** `/v1/auth/list-sessions` returns the user's other sessions with raw tokens (a full
     session only since F1); disable it or strip `token` before a sessions screen exists.
   - **L2:** `user.image` accepts any string, `javascript:` URLs included; validate before a
@@ -393,10 +393,6 @@ scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
   options are seeded with their allergen impact **not confirmed** (SEED_DATA confirms only the
   protein and bread options), so diners will see "allergen impact not confirmed" on them; the local
   super admin's password is `DemoAdmin!2026`; staff names are invented.
-- **Per-address sign-in limits (security review M1, M2):** say yes to adding them (recommended
-  before staging: 5 codes an hour per address, a 15-minute pause after 10 wrong passwords), or
-  choose a different trade. The catch: anyone who knows an address can then keep its owner from
-  signing in for a few minutes at a time.
 - **Let sessions push the phase branch:** keep the sentence in §0 in your prompt (the prompts in
   `docs/sessions/` already include it).
 - Repository visibility (public vs private), the licence text, branch protection on `master`,
@@ -409,6 +405,19 @@ scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
 ## 12. Session log
 
 Newest first. Each session adds one entry: date, task, branch and head, result, CI, notes.
+
+### 2026-11-26 — Per-address sign-in limits (review M1, M2) · branch `ccr-5ac9a7bd-5ahjj9`
+- **What now works:** one address gets at most 5 code emails an hour, whichever IPs ask; 10 wrong
+  passwords in a row for one address pause its password sign-in for 15 minutes (even the right
+  password answers 429 meanwhile; a successful sign-in clears the count). Addresses without an
+  account behave the same, so nothing reveals which exist. Without Valkey, password sign-in is
+  refused rather than left unlimited. The owner approved this in the same session.
+- **Commits:** `f7e8962` (limits and tests) plus the docs commit (ADR-034; API.md §8, SECURITY T7,
+  the review report, this file, PROGRESS).
+- **Tests:** api unit 104 → 107, api integration 121 → 124 (codes per address; the pause; fail
+  closed). All three failed against the previous bridge and pass now.
+- **CI:** see the PROGRESS row (runs on the docs head).
+- **Session:** https://claude.ai/code/session_01YNpMivNJKtXxAGFScKWo5o
 
 ### 2026-11-26 — Security review of Phase 1 · branch `ccr-5ac9a7bd-5ahjj9`
 - **What now works:** a shared tablet's PIN session stays confined to reading itself and signing
