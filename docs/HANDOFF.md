@@ -48,7 +48,7 @@ together and see a per-person tab; restaurants import menus with AI, confirm all
 | Phase | Name | State |
 |---|---|---|
 | P0 | Foundation | ✅ merged to `master` ([PR #1](https://github.com/assemabdelmalak/demo/pull/1)), owner sign-off 2026-11-10 |
-| **P1** | **Data model, auth, tenancy** | **🟨 in progress** (T01–T07 done; T08, security review, docs + PR left) |
+| **P1** | **Data model, auth, tenancy** | **🟨 in progress** (T01–T08 done; security review, docs + PR left) |
 | P2 | Restaurant setup and menu management (console) | ⬜ |
 | P3 | Diner menu PWA | ⬜ |
 | P4 | Table sessions and group ordering | ⬜ |
@@ -73,15 +73,16 @@ The owner approved the plan in `docs/plans/phase-01-plan.md` on 2026-11-11; its 
 | P1-T05 Authorisation layer | ✅ CI green ([CI 52](https://github.com/assemabdelmalak/demo/actions/runs/43926461166)) | ADR text not written yet (§9) |
 | P1-T06 Super admin, staff devices, PIN | ✅ CI green ([CI 62](https://github.com/assemabdelmalak/demo/actions/runs/45254520210), [Docker 34](https://github.com/assemabdelmalak/demo/actions/runs/45254520229)) | Done 2026-11-23, see §12 |
 | P1-T07 Audit and outbox | ✅ CI green ([CI 68](https://github.com/assemabdelmalak/demo/actions/runs/45630173651), [Docker 38](https://github.com/assemabdelmalak/demo/actions/runs/45630173552)) | Done 2026-11-25, see §12 |
-| P1-T08 Seed Beit Tayta | ⬜ **next** | |
-| Security review of Phase 1 | ⬜ | Started twice before and cut off; never finished |
+| P1-T08 Seed Beit Tayta | ✅ CI green ([CI 72](https://github.com/assemabdelmalak/demo/actions/runs/45739297307), [Docker 42](https://github.com/assemabdelmalak/demo/actions/runs/45739297263)) | Done 2026-11-26, see §12; ADR-033 |
+| Security review of Phase 1 | ⬜ **next** | Started twice before and cut off; never finished |
 | Docs pass, Phase 1 PR, demo checkpoint | ⬜ | Stops for the owner's review |
 
-**Last verified numbers (2026-11-25, after P1-T07):** lint, typecheck, format, i18n sync,
-OpenAPI drift and build pass. Unit tests: shared 524, api 104, config 59, console 50, ui 46,
-db 15, mail 10, worker 9, diner 6, api-client 2. Integration: api 114, db 41, worker 14, config 2
-of 4 (the other 2 assert PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16 by
-design; green in CI). Playwright: 49 passed (en + ar) against the full local stack.
+**Last verified numbers (2026-11-26, after P1-T08):** lint, typecheck, format, i18n sync and
+build pass; `pnpm db:seed` twice gives "0 rows created, 0 updated" on the second run. Unit tests:
+shared 524, api 104, config 62, console 50, ui 46, db 32, mail 10, worker 9, diner 6,
+api-client 2. Integration: api 120, db 52, worker 14, config 2 of 4 (the other 2 assert
+PostgreSQL 17 and pgvector and fail on the local PostgreSQL 16 by design; green in CI).
+Playwright: 57 passed (en + ar) against the full local stack with the seed.
 
 ---
 
@@ -89,16 +90,15 @@ design; green in CI). Playwright: 49 passed (en + ar) against the full local sta
 
 Each has a detailed prompt in `docs/sessions/`; the universal prompt in §0 also works.
 
-1. **P1-T08 Seed "Beit Tayta"** — `docs/sessions/03-p1-t08.md`. Seeded rows are written by the
-   seed directly, not through the API, so they produce no audit entries or outbox events; that
-   is expected.
-2. **Security review of Phase 1** — `docs/sessions/04-security-review.md`. Include the new
+1. **Security review of Phase 1** — `docs/sessions/04-security-review.md`. Include the new
    surface: the PIN switch (public route), PIN sessions, device cookie, `/v1/admin/*`, Bull Board,
-   and from P1-T07 the outbox definer functions (`app_worker` only), `DATABASE_URL_WORKER`, the
-   audit redaction list (`apps/api/src/audit/audit-state.ts`) and the `afterCommit` hook.
-3. **Docs pass, Phase 1 PR, demo checkpoint** — `docs/sessions/05-docs-and-pr.md`. Stops and
-   waits for the owner.
-4. **Phase 2 plan** — start in plan mode: summarise the phase goal, list P2-T01…T11 and the files
+   from P1-T07 the outbox definer functions (`app_worker` only), `DATABASE_URL_WORKER`, the
+   audit redaction list (`apps/api/src/audit/audit-state.ts`) and the `afterCommit` hook, and from
+   P1-T08 the seed (`packages/db/src/seed/`: refuses production, known demo passwords wherever it
+   runs, PIN `1234` written past the weak-PIN check, super admin only in local and test).
+2. **Docs pass, Phase 1 PR, demo checkpoint** — `docs/sessions/05-docs-and-pr.md`. Stops and
+   waits for the owner. The PR's demo steps can now use the seeded accounts.
+3. **Phase 2 plan** — start in plan mode: summarise the phase goal, list P2-T01…T11 and the files
    to touch, list open questions, wait for approval (CLAUDE §2.2). Then one task per session.
 
 After Phase 1 the queue is the plan itself, task by task (titles from `IMPLEMENTATION_PLAN.md`):
@@ -147,8 +147,8 @@ demo checkpoint (CLAUDE §2.5).
   branch, fast-forward it to your work (`git push origin HEAD:phase/01-data-auth-tenancy`; never
   force). If not, say in your report that the phase branch needs fast-forwarding, and record your
   branch in §12.
-- **Right now:** nothing pending. P1-T07 was done on `claude/upbeat-ride-z192ey` and the phase
-  branch was fast-forwarded to it (the owner's prompt allowed it), so start from
+- **Right now:** nothing pending. P1-T08 was done on `ccr-4a469ea9-ynf5ub` and the phase branch
+  was fast-forwarded to it (the owner's prompt allowed it), so start from
   `origin/phase/01-data-auth-tenancy`.
 
 ---
@@ -161,6 +161,7 @@ source infra/scripts/agent-env.sh        # Node 24, pnpm, Playwright's Chromium,
 infra/scripts/agent-services.sh          # local PostgreSQL 16 + Redis, dev database, .env
 pnpm install && pnpm db:migrate
 git status --short                       # anything uncommitted is unfinished work: read it first
+pnpm db:seed                             # optional: the demo restaurant (add --with-session for tables 5 and 9)
 ```
 
 - The cloud container has **no Docker**. `agent-services.sh` replaces `pnpm dev:infra`. Run it
@@ -231,6 +232,14 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
   check the production install: `pnpm --filter @radd/api deploy --prod --legacy --ignore-scripts <dir> && du -sm <dir>`
   (193 MB raw after P1-T06; the image prunes maps and types). `.pnpmfile.cjs` strips optional
   peers that drag dev tools in (Better Auth's frameworks, valibot's TypeScript).
+- **The seed** (`pnpm db:seed [--with-session]`, ADR-033) is the demo restaurant of
+  `docs/SEED_DATA.md`; later safety tests and evals rely on its allergen statuses. Change
+  `packages/db/src/seed/data.ts` only together with SEED_DATA (the unit test restates its allergen
+  table by hand and fails on drift). Tests name seeded rows with `SEED_IDS` / `seedIds` from
+  `@radd/db/seed`. Rows are written only when they differ, so a second run must print "0 rows
+  created, 0 updated" (CI checks it). A new tenant table the demo needs gets its rows in
+  `rows.ts`, written through `upsertRows` inside the seed's `withTenant`. P2-T08 must make the
+  seed publish and set the restaurant live; P2-T02 must add the photos.
 - **Docs stay truthful:** a deviation from a spec is fixed in that spec and explained in
   `docs/DECISIONS.md` in the same PR.
 - **Arabic and English:** every console string in both catalogues; check RTL, 360 px, keyboard.
@@ -244,7 +253,7 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 | Project rules | `CLAUDE.md` |
 | Tasks and acceptance criteria | `docs/IMPLEMENTATION_PLAN.md` |
 | Approved Phase 1 plan and design decisions | `docs/plans/phase-01-plan.md` |
-| Decisions made so far | `docs/DECISIONS.md` (ADR-001…022, 028 and 031 written; 023…027, 029, 030 pending, §9) |
+| Decisions made so far | `docs/DECISIONS.md` (ADR-001…022, 028, 031 and 033 written; 023…027, 029, 030 and 032 pending, §9) |
 | Detailed per-task log, "Needs owner" | `docs/PROGRESS.md` |
 | Database: schema, migrations, RLS, tenant helpers, test DB | `packages/db/src/schema/*`, `packages/db/drizzle/*`, `packages/db/sql/bootstrap-roles.sql`, `packages/db/src/tenant.ts`, `packages/db/src/testing/*` |
 | Auth server (Better Auth bridge, sessions, PIN-session gate) | `apps/api/src/auth/*` |
@@ -257,7 +266,8 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 | Mail | `packages/mail`; worker processor `apps/worker/src/processors/notify-email.processor.ts` |
 | Console account pages and shells | `apps/console/src/app/(auth)`, `(owner)`, `(staff)`, `(kitchen)`, `(admin)`; gates in `apps/console/src/lib/session.server.ts` |
 | Integration test patterns | `apps/api/test/*.int.test.ts`, `apps/api/test/support/*` |
-| Browser tests | `e2e/*.spec.ts`, `playwright.config.ts` |
+| Demo seed (Beit Tayta) | `packages/db/src/seed/*` (`data.ts` is SEED_DATA as code; `run.ts` writes it; `main.ts` is `pnpm db:seed`), export `@radd/db/seed` |
+| Browser tests | `e2e/*.spec.ts` (shared console helpers in `e2e/console-helpers.ts`; seeded roles in `console.roles.spec.ts`), `playwright.config.ts` |
 | Agent setup without Docker | `infra/scripts/agent-env.sh`, `infra/scripts/agent-services.sh`, `infra/scripts/mail-catcher.mjs` |
 
 ## 9. Docs debt (session "Docs pass" clears it; earlier if you touch the area)
@@ -310,8 +320,8 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
 - An invitation row can exist without its email if the queue is down at that moment.
 - Verification identifiers store the email in plain text (`sign-in-otp-<email>`).
 - Console pages are ~72 KB heavier (zod) than the old placeholder.
-- No browser coverage yet for turning two-factor off or for the staff and kitchen shells (seeded
-  users arrive in T08).
+- No browser coverage yet for turning two-factor off. (The staff and kitchen shells are covered
+  since P1-T08 by `e2e/console.roles.spec.ts`.)
 - **New in P1-T06:**
   - The console has no screens yet for devices, PINs or the PIN switch (P2-T11 team management);
     the API is complete and tested.
@@ -338,11 +348,28 @@ depends on Docker is ✅ only when CI is green. Fix a red run before starting an
   - The worker's production install grew from 98 to 124 MB raw (`@radd/db`: pg, drizzle,
     argon2 binary); still well under the 250 MB image limit.
 
+- **New in P1-T08:**
+  - Wherever the seed runs, its accounts have the passwords written in this repository. On staging
+    (ARCHITECTURE: "seed + test orgs") anyone who reads the repo could sign in to the demo
+    organisation there (demo data only; RLS keeps it inside that organisation). Decide before
+    staging exists whether staging gets different demo passwords.
+  - Re-seeding puts back the documented demo state, including allergen statuses, prices and
+    passwords someone changed by hand in the seeded restaurant (by design).
+  - The seed must run with the API's `BETTER_AUTH_SECRET`: the staff PIN and the super admin's TOTP
+    only verify under it. After rotating that secret, run the seed again (table QR tokens are kept).
+  - The seeded super admin has no backup codes; a lost authenticator means re-running the seed.
+  - The seed encrypts the TOTP secret with `better-auth/crypto` (a dev dependency of `@radd/db`);
+    a Better Auth upgrade that changes that format is caught by `apps/api/test/seed.int.test.ts`.
+
 ## 11. Owner: what only you can do
 
 The full list with explanations is "Needs owner" in `docs/PROGRESS.md`; the per-phase test
 scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
 
+- **Seed decisions (ADR-033), say if you want them changed:** the side (fries, salad) and sugar
+  options are seeded with their allergen impact **not confirmed** (SEED_DATA confirms only the
+  protein and bread options), so diners will see "allergen impact not confirmed" on them; the local
+  super admin's password is `DemoAdmin!2026`; staff names are invented.
 - **Let sessions push the phase branch:** keep the sentence in §0 in your prompt (the prompts in
   `docs/sessions/` already include it).
 - Repository visibility (public vs private), the licence text, branch protection on `master`,
@@ -355,6 +382,34 @@ scripts are in `OWNER_CHECKLIST.md` §8. Open items, most urgent first:
 ## 12. Session log
 
 Newest first. Each session adds one entry: date, task, branch and head, result, CI, notes.
+
+### 2026-11-26 — P1-T08 seed "Beit Tayta" · branch `ccr-4a469ea9-ynf5ub`
+- **What now works:** `pnpm db:seed` creates the demo restaurant of SEED_DATA: Beit Tayta SAL on
+  the pro plan for a year, four accounts that sign in with their SEED_DATA passwords (owner,
+  manager, staff with PIN `1234`, kitchen), the local super admin `admin@radd.test` with its
+  authenticator seed printed, the restaurant settings, 12 tables in two areas, 4 kitchen
+  stations, modifier groups G1–G5, 28 dishes with ingredients and 14 allergen rows each (four
+  dishes deliberately unconfirmed: vine leaves, sujuk, shish taouk, lahm bi ajeen) and the FAQ.
+  `--with-session` opens table 5 (the GROUP_ORDERING §7.5 example, $49.50, round accepted) and
+  table 9 (round waiting for approval). Running it again changes nothing. It prints "publish
+  pending" and "images pending"; the restaurant stays a draft until P2-T08.
+- **Commits:** `0317705` … `b386084` (shared e2e helpers, seed env schema, the seed with unit
+  tests, db integration test, API sign-in test, role browser test, CI seed step, ADR-033 and
+  SEED_DATA) plus the docs commit.
+- **Decisions (ADR-033):** deterministic UUIDv7 IDs and "update only if different" writes; tenant
+  rows as `app_runtime` through `withTenant`, the subscription as `app_admin`; refuses
+  production; super admin only in local and test; side and sugar options not confirmed; table 9's
+  contents; the restaurant stays draft.
+- **Tests:** db unit 15 → 32 (SEED_DATA's allergen table restated by hand), db integration
+  41 → 52 (two runs give identical rows, timestamps included; repair of hand edits; RLS; guards),
+  API integration 114 → 120 (each role signs in; super admin passes TOTP; PIN switch with 1234),
+  Playwright 49 → 57 (each seeded role's navigation in en and ar). Mutation check: dropping the
+  "only if different" guard fails the twice-run test.
+- **CI:** green on `b386084`: [CI 72](https://github.com/assemabdelmalak/demo/actions/runs/45739297307)
+  (including `test-int` on PostgreSQL 17 and `e2e-smoke`, which now seeds twice and runs the role
+  tests) and [Docker 42](https://github.com/assemabdelmalak/demo/actions/runs/45739297263). The
+  phase branch was fast-forwarded to this work.
+- **Session:** https://claude.ai/code/session_01YNpMitrdbXy9e9Z4hzC4tP
 
 ### 2026-11-25 — P1-T07 audit and outbox · branch `claude/upbeat-ride-z192ey`
 - **What now works:** every change the API makes (ten so far) is written to the audit log, in the
