@@ -215,12 +215,28 @@ export const migrateEnvSchema = z.object({
   DATABASE_URL_MIGRATOR: url,
 });
 
+/**
+ * `pnpm db:seed` (the demo restaurant, SEED_DATA). It writes tenant rows as the API's role, the
+ * subscription as the admin role, and needs the API's `BETTER_AUTH_SECRET`: PIN hashes and the
+ * super admin's TOTP secret only verify under the secret the API runs with.
+ */
+export const seedEnvSchema = z
+  .object({
+    APP_ENV: common.APP_ENV,
+    DATABASE_URL: url,
+    DATABASE_URL_ADMIN: url,
+    BETTER_AUTH_SECRET: requiredString,
+    SUPER_ADMIN_EMAILS: csv(z.email()),
+  })
+  .superRefine(refineSecrets(['BETTER_AUTH_SECRET']));
+
 export const envSchemas = {
   api: apiEnvSchema,
   worker: workerEnvSchema,
   diner: dinerEnvSchema,
   console: consoleEnvSchema,
   migrate: migrateEnvSchema,
+  seed: seedEnvSchema,
 } as const;
 
 export const publicEnvSchemas = {

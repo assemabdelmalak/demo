@@ -71,6 +71,14 @@ describe('database credentials', () => {
     expect(schemaKeys('api')).not.toContain('DATABASE_URL_WORKER');
     expect(new URL(example.DATABASE_URL_WORKER ?? '').username).toBe('app_worker');
   });
+
+  it('gives the seed the API role for tenant rows and the admin role for the plan only', () => {
+    expect(
+      schemaKeys('seed')
+        .filter((key) => key.startsWith('DATABASE_URL'))
+        .sort(),
+    ).toEqual(['DATABASE_URL', 'DATABASE_URL_ADMIN']);
+  });
 });
 
 describe('parseEnv', () => {
@@ -160,6 +168,12 @@ describe('secrets outside local development', () => {
     });
     expect(issues).toHaveLength(1);
     expect(JSON.stringify(issues)).not.toContain('hunter2');
+  });
+
+  it("holds the seed to the API's rule for the auth secret it shares", () => {
+    expect(issuesFor('seed', { ...example, APP_ENV: 'staging' })).toEqual([
+      expect.objectContaining({ key: 'BETTER_AUTH_SECRET' }),
+    ]);
   });
 
   it('holds the console to the same rule for its one secret', () => {
