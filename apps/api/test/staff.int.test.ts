@@ -368,6 +368,48 @@ describe.skipIf(!runtime.ready)('staff devices and PIN sessions (ADR-026)', () =
       expect(await query('select 1 from session where id = $1', [pinSession.id])).toEqual([]);
     });
 
+    // Security review of Phase 1: Better Auth's cookie parser trims the space around a cookie's
+    // name, so a header the bridge's own check did not recognise still carried the PIN session.
+    it('confines a PIN session however its cookie header is written', async () => {
+      const t = await team('cookie-forms');
+      await setPin(t, t.members.staff, '2580');
+      const { client, deviceId } = await tablet(t);
+      expect((await switchTo(client, deviceId, t.members.staff, '2580')).statusCode).toBe(200);
+      const token = client.jar.get(sessionCookie) ?? '';
+      const device = `${DEVICE_COOKIE}=${client.jar.get(DEVICE_COOKIE) ?? ''}`;
+      const raw = (method: 'GET' | 'POST', url: string, cookie: string, payload?: object) =>
+        app.inject({
+          method,
+          url,
+          headers: { origin: CONSOLE, cookie },
+          remoteAddress: client.options.ip,
+          ...(payload ? { payload } : {}),
+        });
+
+      for (const cookie of [
+        `${sessionCookie} =${token}; ${device}`,
+        `${sessionCookie}\t=${token}; ${device}`,
+        `${device};${sessionCookie} = ${token}`,
+        // The thief's case: the PIN session's cookie alone, off the tablet.
+        `${sessionCookie} =${token}`,
+      ]) {
+        const sessions = await raw('GET', '/v1/auth/list-sessions', cookie);
+        expect(sessions.statusCode, cookie).not.toBe(200);
+        expect(sessions.body, cookie).not.toContain('"token"');
+        const members = await raw('GET', '/v1/auth/organization/list-members', cookie);
+        expect(members.statusCode, cookie).not.toBe(200);
+        const renamed = await raw('POST', '/v1/auth/update-user', cookie, { name: 'Renamed' });
+        expect(renamed.statusCode, cookie).not.toBe(200);
+      }
+      const [user] = await query<{ name: string }>('select name from "user" where id = $1', [
+        t.staff.userId,
+      ]);
+      expect(user?.name).not.toBe('Renamed');
+      // The tablet's own session is untouched and still confined.
+      expect((await client.get('/v1/me')).json()).toMatchObject({ user: { id: t.staff.userId } });
+      expect((await client.get('/v1/auth/list-sessions')).statusCode).toBe(403);
+    });
+
     it('refuses every failure with the same answer', async () => {
       const t = await team('refuse');
       const other = await team('refuse-other');

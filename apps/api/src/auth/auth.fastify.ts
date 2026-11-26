@@ -65,7 +65,11 @@ export function authRelativePath(url: string, basePath: string): string {
   return trimmed === '' ? '/' : trimmed;
 }
 
-/** Whether a `Cookie` header carries the named cookie. */
+/**
+ * Whether a `Cookie` header carries the named cookie, written the way browsers write it. Only a
+ * fast path where a miss fails closed (no session resolved); never use it to decide whether a
+ * request escapes a restriction, because Better Auth's parser also accepts other spellings.
+ */
 export function hasCookie(header: string | undefined, name: string): boolean {
   if (!header) return false;
   return header.split(';').some((part) => part.trimStart().startsWith(`${name}=`));
@@ -154,7 +158,10 @@ export async function registerAuth(
         }
 
         const url = new URL(request.url, origin);
-        if (hasCookie(request.headers.cookie, sessionCookie)) {
+        // Any Cookie header at all: whether it carries a session is Better Auth's own reading,
+        // not ours. A check of our own let `name =value` past while Better Auth read it as the
+        // session (security review of Phase 1), and the confinement must never depend on it.
+        if (request.headers.cookie) {
           const decision = await pinSessionDecision(request, path);
           if (decision === 'refuse') return await reply.status(403).send(PIN_SESSION_FORBIDDEN);
           if (decision === 'signed_out') {
